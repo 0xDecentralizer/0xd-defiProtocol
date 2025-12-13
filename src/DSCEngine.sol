@@ -25,6 +25,9 @@
 
 pragma solidity ^0.8.30;
 
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
+
 /**
  * @title DSCEngine
  * @author Patrick Collins
@@ -44,24 +47,36 @@ pragma solidity ^0.8.30;
  * for minting and redeeming DSC, as well as depositing and withdrawing collateral.
  * @notice This contract is based on the MakerDAO DSS system
  */
-contract DSCEngine {
-
+contract DSCEngine is ReentrancyGuard {
     // Errors
     error DSCEngine__NeedsMoreThanZero();
+    error DSCEngine__CollateralNotValid();
+
+    // State Variables
+    mapping(address token => address priceFeed) private priceFeeds;
 
     // Modifiers
     modifier needsMoreThanZero(uint256 amount) {
         _needsMoreThanZero(amount);
         _;
     }
+    modifier isValidCollateral(address collateralAddress) {
+        _isValidCollateral(collateralAddress);
+        _;
+    }
 
     // External Functions
     /**
-     * @notice Deposits collateral into the DSC system 
+     * @notice Deposits collateral into the DSC system
      * @param collateralAddress The address of the collateral token to deposit
      * @param amount The amount of collateral to deposit
      */
-    function depositCollateral(address collateralAddress, uint256 amount) external needsMoreThanZero(amount) {}
+    function depositCollateral(address collateralAddress, uint256 amount)
+        external
+        needsMoreThanZero(amount)
+        isValidCollateral(collateralAddress)
+        nonReentrant
+    {}
 
     function depositCollateralAndMintIt() external {}
 
@@ -80,6 +95,12 @@ contract DSCEngine {
     function _needsMoreThanZero(uint256 amount) internal pure {
         if (amount <= 0) {
             revert DSCEngine__NeedsMoreThanZero();
+        }
+    }
+
+    function _isValidCollateral(address collateralAddress) internal view {
+        if (priceFeeds[collateralAddress] == address(0)) {
+            revert DSCEngine__CollateralNotValid();
         }
     }
 }
