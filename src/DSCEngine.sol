@@ -27,6 +27,7 @@ pragma solidity ^0.8.30;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 /**
  * @title DSCEngine
@@ -51,32 +52,61 @@ contract DSCEngine is ReentrancyGuard {
     // Errors
     error DSCEngine__NeedsMoreThanZero();
     error DSCEngine__CollateralNotValid();
+    error DSCEngine__TransferFaild();
+    error DSCEngine__TokenAddressesAndPriceFeedsDontMatch();
 
     // State Variables
+    DecentralizedStableCoin private immutable DSC_TOKEN;
     mapping(address token => address priceFeed) private priceFeeds;
+    mapping(address user => mapping(address token => uint256 amount)) private collateralDeposited;
+
+    // Events
+    event CollateralDeposited(address indexed depositor, address indexed depositedCollateral, uint256 indexed amount);
 
     // Modifiers
     modifier needsMoreThanZero(uint256 amount) {
         _needsMoreThanZero(amount);
         _;
     }
-    modifier isValidCollateral(address collateralAddress) {
-        _isValidCollateral(collateralAddress);
+    modifier isValidCollateral(address collateralToeknAddress) {
+        _isValidCollateral(collateralToeknAddress);
         _;
+    }
+
+    // Constructor
+    constructor(address[] memory collateralAddresses, address[] memory priceFeedAddresses, address dscTokenAddress) {
+        if (collateralAddresses.length != priceFeedAddresses.length) {
+            revert DSCEngine__TokenAddressesAndPriceFeedsDontMatch();
+        }
+        
+        DSC_TOKEN = DecentralizedStableCoin(dscTokenAddress);
+
+        for(uint256 i = 0; i < collateralAddresses.length; i++) {
+            priceFeeds[collateralAddresses[i]] = priceFeedAddresses[i];
+        }
+
     }
 
     // External Functions
     /**
      * @notice Deposits collateral into the DSC system
-     * @param collateralAddress The address of the collateral token to deposit
+     * @param collateralToeknAddress The address of the collateral token to deposit
      * @param amount The amount of collateral to deposit
      */
-    function depositCollateral(address collateralAddress, uint256 amount)
+    function depositCollateral(address collateralToeknAddress, uint256 amount)
         external
         needsMoreThanZero(amount)
-        isValidCollateral(collateralAddress)
+        isValidCollateral(collateralToeknAddress)
         nonReentrant
-    {}
+    {
+        // TODO: implement deposit collateral logic
+        collateralDeposited[msg.sender][collateralToeknAddress] += amount;
+        emit CollateralDeposited(msg.sender, collateralToeknAddress, amount);
+        (bool success) = IERC20(collateralToeknAddress).transferFrom(msg.sender, address(this), amount);
+        if (!success) {
+            revert DSCEngine__TransferFaild();
+        }
+    }
 
     function depositCollateralAndMintIt() external {}
 
@@ -98,8 +128,8 @@ contract DSCEngine is ReentrancyGuard {
         }
     }
 
-    function _isValidCollateral(address collateralAddress) internal view {
-        if (priceFeeds[collateralAddress] == address(0)) {
+    function _isValidCollateral(address collateralToeknAddress) internal view {
+        if (priceFeeds[collateralToeknAddress] == address(0)) {
             revert DSCEngine__CollateralNotValid();
         }
     }
