@@ -33,7 +33,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
  * @author Mohammad Mahdi Keshavarz - AKA 0xdecentralizer
  * @notice Decentralized stable coin pegged to USD via collateralized minting mechanism.
  * @dev Inheritable ERC20 token controlled by DSCEngine for minting/burning operations.
- * 
+ *
  * Design:
  * - Collateral: Exogenous (external assets)
  * - Stability Mechanism: Decentralized (Algorithmic)
