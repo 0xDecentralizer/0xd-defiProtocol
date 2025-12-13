@@ -45,9 +45,25 @@ pragma solidity ^0.8.30;
  * @notice This contract is based on the MakerDAO DSS system
  */
 contract DSCEngine {
-    function depositCollateralAndMintIt() external {}
 
-    function depositCollateral() external {}
+    // Errors
+    error DSCEngine__NeedsMoreThanZero();
+
+    // Modifiers
+    modifier needsMoreThanZero(uint256 amount) {
+        _needsMoreThanZero(amount);
+        _;
+    }
+
+    // External Functions
+    /**
+     * @notice Deposits collateral into the DSC system 
+     * @param collateralAddress The address of the collateral token to deposit
+     * @param amount The amount of collateral to deposit
+     */
+    function depositCollateral(address collateralAddress, uint256 amount) external needsMoreThanZero(amount) {}
+
+    function depositCollateralAndMintIt() external {}
 
     function redeemCollateralForDsc() external {}
 
@@ -60,4 +76,10 @@ contract DSCEngine {
     function liquidate() external {}
 
     function getHealthFactor() external view {}
+
+    function _needsMoreThanZero(uint256 amount) internal pure {
+        if (amount <= 0) {
+            revert DSCEngine__NeedsMoreThanZero();
+        }
+    }
 }
