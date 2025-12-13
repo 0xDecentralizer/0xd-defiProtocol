@@ -121,6 +121,7 @@ contract DSCEngine is ReentrancyGuard {
 
     function getHealthFactor() external view {}
 
+    // Internal Functions
     function _needsMoreThanZero(uint256 amount) internal pure {
         if (amount <= 0) {
             revert DSCEngine__NeedsMoreThanZero();
@@ -131,5 +132,13 @@ contract DSCEngine is ReentrancyGuard {
         if (priceFeeds[collateralToeknAddress] == address(0)) {
             revert DSCEngine__CollateralNotValid();
         }
+    }
+
+    function getPriceFeed(address collateralTokenAddress) public view returns (address) {
+            return priceFeeds[collateralTokenAddress];
+    }
+
+    function getDscTokenAddress() public view returns (address) {
+        return address(DSC_TOKEN);
     }
 }
