@@ -27,8 +27,5 @@ contract TestDSCEngine is Test {
         assertEq(dscEngine.getDscTokenAddress(), dscToken);
     }
 
-    function testDepositWithInvalidArguments() public {
-
-    }
-
+    function testDepositWithInvalidArguments() public {}
 }
