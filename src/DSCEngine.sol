@@ -59,6 +59,7 @@ contract DSCEngine is ReentrancyGuard {
     DecentralizedStableCoin private immutable DSC_TOKEN;
     mapping(address token => address priceFeed) private priceFeeds;
     mapping(address user => mapping(address token => uint256 amount)) private collateralDeposited;
+    mapping(address user => uint256 amountDSCMinted) private DSCMinted;
 
     // Events
     event CollateralDeposited(address indexed depositor, address indexed depositedCollateral, uint256 indexed amount);
@@ -113,7 +114,16 @@ contract DSCEngine is ReentrancyGuard {
 
     function redeemCollateral() external {}
 
-    function mintDsc() external {}
+
+    /**
+     * @notice Mints DSC to a user - Follow CEI
+     * @param amountDSC The amount of DSC to mint
+     * @dev Needs more than zero amount to mint
+     */
+    function mintDsc(uint256 amountDSC) external needsMoreThanZero(amountDSC) {
+        DSCMinted[msg.sender] += amountDSC;
+        _revertIfHealthFactorIsBroken(msg.sender);
+    }
 
     function burnDsc() external {}
 
@@ -121,7 +131,12 @@ contract DSCEngine is ReentrancyGuard {
 
     function getHealthFactor() external view {}
 
-    // Internal Functions
+    // Private & Internal Functions
+    function _getAccountInformation(address user) private returns (uint256 totalDscMinted, uint256 collateralValueInUsd) {
+        totalDscMinted = DSCMinted[msg.sender];
+        collateralValueInUsd = getAccountCollateralValue(user);
+    }
+
     function _needsMoreThanZero(uint256 amount) internal pure {
         if (amount <= 0) {
             revert DSCEngine__NeedsMoreThanZero();
@@ -134,11 +149,31 @@ contract DSCEngine is ReentrancyGuard {
         }
     }
 
+    /**
+     * @notice Returns the health factor of a user
+     * @param user The address of the user
+     * @return The health factor of the user
+     */
+    function _healtFactor(address user) private returns (uint256) {
+        (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
+    }
+
+    function _revertIfHealthFactorIsBroken(address user) internal view {
+        if (true) {
+            revert();
+        }
+    }
+
+    // Public & External View Function
     function getPriceFeed(address collateralTokenAddress) public view returns (address) {
-            return priceFeeds[collateralTokenAddress];
+        return priceFeeds[collateralTokenAddress];
     }
 
     function getDscTokenAddress() public view returns (address) {
         return address(DSC_TOKEN);
+    }
+
+    function getAccountCollateralValue(address user) public returns (uint256) {
+
     }
 }
