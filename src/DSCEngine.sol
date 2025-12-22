@@ -28,6 +28,7 @@ pragma solidity ^0.8.30;
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 /**
  * @title DSCEngine
@@ -56,10 +57,13 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__TokenAddressesAndPriceFeedsDontMatch();
 
     // State Variables
+    uint256 constant ADDITIONAL_FEED_PRECISION = 1e8;
+    uint256 constant PRECISION = 1e18;
     DecentralizedStableCoin private immutable DSC_TOKEN;
     mapping(address token => address priceFeed) private priceFeeds;
     mapping(address user => mapping(address token => uint256 amount)) private collateralDeposited;
     mapping(address user => uint256 amountDSCMinted) private DSCMinted;
+    address[] private collateralTokens;
 
     // Events
     event CollateralDeposited(address indexed depositor, address indexed depositedCollateral, uint256 indexed amount);
@@ -84,6 +88,7 @@ contract DSCEngine is ReentrancyGuard {
 
         for (uint256 i = 0; i < collateralAddresses.length; i++) {
             priceFeeds[collateralAddresses[i]] = priceFeedAddresses[i];
+            collateralTokens.push(collateralAddresses[i]);
         }
     }
 
@@ -154,12 +159,12 @@ contract DSCEngine is ReentrancyGuard {
      * @param user The address of the user
      * @return The health factor of the user
      */
-    function _healtFactor(address user) private returns (uint256) {
+    function _healtFactor(address user) private  returns (uint256) {
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
     }
 
-    function _revertIfHealthFactorIsBroken(address user) internal view {
-        if (true) {
+    function _revertIfHealthFactorIsBroken(address user) internal {
+        if (_healtFactor(user) < 1) {
             revert();
         }
     }
@@ -173,7 +178,18 @@ contract DSCEngine is ReentrancyGuard {
         return address(DSC_TOKEN);
     }
 
-    function getAccountCollateralValue(address user) public returns (uint256) {
+    function getUsdValue(address token, uint256 amount) public returns (uint256) {
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(priceFeeds[token]);
+        (, int256 price ,,,) = priceFeed.latestRoundData();
+        return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
+    }
 
+    function getAccountCollateralValue(address user) public returns (uint256) {
+        uint256 totalCollateralValueInUsd;
+        for (uint i = 0; i < collateralTokens.length; i++) {
+            address token = collateralTokens[i];
+            uint256 amount = collateralDeposited[user][token];
+            totalCollateralValueInUsd += getUsdValue(token, amount);
+        }
     }
 }
