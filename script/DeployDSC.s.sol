@@ -24,5 +24,7 @@ contract DeployDSC is Script {
         dscEngine = new DSCEngine(collaterals, priceFeeds, address(dscToken));
         dscToken.transferOwnership(address(dscEngine));
         vm.stopBroadcast();
+
+        return (dscToken, dscEngine);
     }
 }
