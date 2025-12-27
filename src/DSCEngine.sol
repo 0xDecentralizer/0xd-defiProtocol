@@ -59,7 +59,7 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__MintFalied();
 
     // State Variables
-    uint256 private constant ADDITIONAL_FEED_PRECISION = 1e8;
+    uint256 private constant ADDITIONAL_FEED_PRECISION = 1e10;
     uint256 private constant PRECISION = 1e18;
     uint256 private constant LIQUIDATION_THRESHOLD = 50; // 200%
     uint256 private constant LIQUIDATION_PRECISION = 100;
@@ -197,13 +197,13 @@ contract DSCEngine is ReentrancyGuard {
         return address(DSC_TOKEN);
     }
 
-    function getUsdValue(address token, uint256 amount) public returns (uint256) {
+    function getUsdValue(address token, uint256 amount) public view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(priceFeeds[token]);
         (, int256 price ,,,) = priceFeed.latestRoundData();
         return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
     }
 
-    function getAccountCollateralValue(address user) public returns (uint256) {
+    function getAccountCollateralValue(address user) public view returns (uint256) {
         uint256 totalCollateralValueInUsd;
         for (uint i = 0; i < collateralTokens.length; i++) {
             address token = collateralTokens[i];
