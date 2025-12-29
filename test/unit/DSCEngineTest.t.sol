@@ -30,6 +30,11 @@ contract DSCEngineTest is Test {
         _;
     }
 
+    modifier userMint100DscToken() {
+        dscToken.mint(USER, 100e8);
+        _;
+    }
+
     function setUp() public {
         deployer = new DeployDSC();
         (dscToken, dscEngine, config) = deployer.run();
