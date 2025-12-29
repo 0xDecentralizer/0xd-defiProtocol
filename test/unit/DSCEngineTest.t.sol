@@ -32,7 +32,8 @@ contract DSCEngineTest is Test {
     }
 
     modifier userMint100DscToken() {
-        dscToken.mint(USER, 100e8);
+        vm.prank(USER);
+        dscEngine.mintDsc(100e8);
         _;
     }
 
