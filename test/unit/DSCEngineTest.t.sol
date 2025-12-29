@@ -43,4 +43,11 @@ contract DSCEngineTest is Test {
 
         assertEq(expectedUsd, actualUsd, "Invalid USD calculation!");
     }
+
+    function testgetHealthFactor() public userDeposited10Eth {
+        uint256 expectedHealthFactor = type(uint256).max;
+        uint256 actualHealthFacotr = dscEngine.getHealthFactor(USER);
+
+        assertEq(expectedHealthFactor, actualHealthFacotr);
+    }
 }
