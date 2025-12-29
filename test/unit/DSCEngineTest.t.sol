@@ -26,6 +26,7 @@ contract DSCEngineTest is Test {
         vm.startPrank(USER);
         IERC20(weth).approve(address(dscEngine), 10 ether);
         dscEngine.depositCollateral(weth, 10 ether);
+        vm.stopPrank();
 
         _;
     }
