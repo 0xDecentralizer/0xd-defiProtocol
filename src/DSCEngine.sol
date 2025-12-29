@@ -145,12 +145,12 @@ contract DSCEngine is ReentrancyGuard {
 
     function liquidate() external {}
 
-    function getHealthFactor(address user) external returns (uint256) {
+    function getHealthFactor(address user) external view returns (uint256) {
         return _healtFactor(user);
     }
 
     // Private & Internal Functions
-    function _getAccountInformation(address user) private returns (uint256 totalDscMinted, uint256 collateralValueInUsd) {
+    function _getAccountInformation(address user) private view returns (uint256 totalDscMinted, uint256 collateralValueInUsd) {
         totalDscMinted = DSCMinted[msg.sender];
         collateralValueInUsd = getAccountCollateralValue(user);
     }
@@ -172,16 +172,16 @@ contract DSCEngine is ReentrancyGuard {
      * @param user The address of the user
      * @return The health factor of the user
      */
-    function _healtFactor(address user) private  returns (uint256) {
+    function _healtFactor(address user) private view returns (uint256) {
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
         uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
         if (totalDscMinted == 0) {
-            return type(uint256).max;
+            return type(uint256).max; // Infinite
         }
         return (collateralAdjustedForThreshold * PRECISION) / totalDscMinted;
     }
 
-    function _revertIfHealthFactorIsBroken(address user) internal {
+    function _revertIfHealthFactorIsBroken(address user) internal view {
         uint256 userHealthFactor = _healtFactor(user);
         if (userHealthFactor < MIN_HEALTH_FACTOR) {
             revert DSCEngine__BreaksHealthFactor(userHealthFactor);
@@ -210,5 +210,6 @@ contract DSCEngine is ReentrancyGuard {
             uint256 amount = collateralDeposited[user][token];
             totalCollateralValueInUsd += getUsdValue(token, amount);
         }
+        return totalCollateralValueInUsd;
     }
 }
