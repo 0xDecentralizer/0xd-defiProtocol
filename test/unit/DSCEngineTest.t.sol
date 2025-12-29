@@ -35,6 +35,16 @@ contract DSCEngineTest is Test {
         (dscToken, dscEngine, config) = deployer.run();
         (wethUsdPriceFeed, wbtcUsdPriceFeed, weth, wbtc, ) = config.activeNetworkConfig();
     }
+    
+    function test_CheckInitialState() public view {
+        address priceFeedAddress0 = wethUsdPriceFeed;
+        address priceFeedAddress1 = wbtcUsdPriceFeed;
+        address dscTokenAddress = address(dscToken);
+
+        assertEq(dscEngine.getPriceFeed(weth), priceFeedAddress0);
+        assertEq(dscEngine.getPriceFeed(wbtc), priceFeedAddress1);
+        assertEq(dscEngine.getDscTokenAddress(), dscTokenAddress);
+    }
 
     function testGetUsdValue() public {
         uint256 amount = 3;
@@ -43,7 +53,11 @@ contract DSCEngineTest is Test {
 
         assertEq(expectedUsd, actualUsd, "Invalid USD calculation!");
     }
-
+    
+    /**
+     * @dev Test health factor for a user that deposited 10 ether and
+     *      dosen't have mint any dsc token yet.
+     */
     function testgetHealthFactor() public userDeposited10Eth {
         uint256 expectedHealthFactor = type(uint256).max;
         uint256 actualHealthFacotr = dscEngine.getHealthFactor(USER);
