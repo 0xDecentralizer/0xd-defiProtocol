@@ -36,7 +36,10 @@ contract DSCEngineTest is Test {
         (wethUsdPriceFeed, wbtcUsdPriceFeed, weth, wbtc, ) = config.activeNetworkConfig();
     }
     
-    function test_CheckInitialState() public view {
+    /**
+     * @dev Check the initial state of contract after deploy.
+     */
+    function testCheckInitialState() public view {
         address priceFeedAddress0 = wethUsdPriceFeed;
         address priceFeedAddress1 = wbtcUsdPriceFeed;
         address dscTokenAddress = address(dscToken);
@@ -46,6 +49,9 @@ contract DSCEngineTest is Test {
         assertEq(dscEngine.getDscTokenAddress(), dscTokenAddress);
     }
 
+    /**
+     * @dev Get the USD value of a token and check the correctness.
+     */
     function testGetUsdValue() public {
         uint256 amount = 3;
         uint256 expectedUsd = 9_000;
