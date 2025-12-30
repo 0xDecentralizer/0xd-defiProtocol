@@ -6,7 +6,6 @@ import {DeployDSC} from "../../script/DeployDSC.s.sol";
 import {DSCEngine} from "../../src/DSCEngine.sol";
 import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
 contract DSCEngineTest is Test {
@@ -14,7 +13,9 @@ contract DSCEngineTest is Test {
     uint256 private constant LIQUIDATION_PRECISION = 100;
     uint256 private constant ADDITIONAL_FEED_PRECISION = 1e10;
     uint256 private constant PRECISION = 1e18;
+
     address immutable USER = makeAddr("user 1");
+    uint256 constant AMOUNT_COLLATERAL = 10 ether;
 
     DeployDSC deployer;
     DSCEngine dscEngine;
@@ -28,7 +29,7 @@ contract DSCEngineTest is Test {
     modifier userDeposited10Eth() {
         ERC20Mock(weth).mint(USER, 10e8);
         vm.startPrank(USER);
-        IERC20(weth).approve(address(dscEngine), 10e8);
+        ERC20Mock(weth).approve(address(dscEngine), 10e8);
         dscEngine.depositCollateral(weth, 10e8);
         vm.stopPrank();
 
@@ -125,10 +126,9 @@ contract DSCEngineTest is Test {
      */
     function testRevertIfDepositInvalidCollateral() public {
         address invalidCollateral = makeAddr("LMAO");
-        uint256 depositAmount = 1;
 
         vm.prank(USER);
         vm.expectRevert(DSCEngine.DSCEngine__CollateralNotValid.selector);
-        dscEngine.depositCollateral(invalidCollateral, 1);
+        dscEngine.depositCollateral(invalidCollateral, AMOUNT_COLLATERAL);
     }
 }
