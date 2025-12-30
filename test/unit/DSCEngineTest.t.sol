@@ -71,6 +71,10 @@ contract DSCEngineTest is Test {
         assertEq(expectedUsd, actualUsd, "Invalid USD calculation!");
     }
 
+    ///////////////////////////////////
+    //////     Health Factor     //////
+    ///////////////////////////////////
+
     /**
      * @dev Test health factor for a user that deposited 10 ether and
      *      dosen't have mint any dsc token yet.
@@ -98,4 +102,19 @@ contract DSCEngineTest is Test {
 
         assertEq(expectedHealthFactor, actualHealthFacotr);
     }
+
+      ///////////////////////////////////////
+     /////     Deposit Collateral     //////
+    ///////////////////////////////////////
+
+        /**
+         * @dev Verifies that the error handling for zero deposits works correctly
+         */
+        function testRevertIfDepositZeroAmountCollateral() public {
+            uint256 zeroAmount = 0;
+
+            vm.prank(USER);
+            vm.expectRevert((DSCEngine.DSCEngine__NeedsMoreThanZero.selector));
+            dscEngine.depositCollateral(weth, zeroAmount);
+        }
 }
