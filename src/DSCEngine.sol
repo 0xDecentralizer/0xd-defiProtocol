@@ -151,7 +151,7 @@ contract DSCEngine is ReentrancyGuard {
 
     // Private & Internal Functions
     function _getAccountInformation(address user) private view returns (uint256 totalDscMinted, uint256 collateralValueInUsd) {
-        totalDscMinted = DSCMinted[msg.sender];
+        totalDscMinted = DSCMinted[user];
         collateralValueInUsd = getAccountCollateralValue(user);
     }
 
