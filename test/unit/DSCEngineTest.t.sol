@@ -95,26 +95,40 @@ contract DSCEngineTest is Test {
         uint256 ethPrice = uint256(config.ETH_USD_PRICE());
         uint256 totalCollateralAmount = 10e8;
         uint256 totalDscMinted = 100e8;
-        uint256 totalCollateralValueInUsd = ((totalCollateralAmount * (ethPrice * ADDITIONAL_FEED_PRECISION)) / PRECISION);
-        uint256 calculatedThreshold = (((totalCollateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION) * PRECISION);
+        uint256 totalCollateralValueInUsd =
+            ((totalCollateralAmount * (ethPrice * ADDITIONAL_FEED_PRECISION)) / PRECISION);
+        uint256 calculatedThreshold =
+            (((totalCollateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION) * PRECISION);
         uint256 expectedHealthFactor = calculatedThreshold / totalDscMinted;
         uint256 actualHealthFacotr = dscEngine.getHealthFactor(USER);
 
         assertEq(expectedHealthFactor, actualHealthFacotr);
     }
 
-      ///////////////////////////////////////
-     /////     Deposit Collateral     //////
+    ///////////////////////////////////////
+    /////     Deposit Collateral     //////
     ///////////////////////////////////////
 
-        /**
-         * @dev Verifies that the error handling for zero deposits works correctly
-         */
-        function testRevertIfDepositZeroAmountCollateral() public {
-            uint256 zeroAmount = 0;
+    /**
+     * @dev Verifies that the error handling for zero deposits works correctly
+     */
+    function testRevertIfDepositZeroAmountCollateral() public {
+        uint256 zeroAmount = 0;
 
-            vm.prank(USER);
-            vm.expectRevert((DSCEngine.DSCEngine__NeedsMoreThanZero.selector));
-            dscEngine.depositCollateral(weth, zeroAmount);
-        }
+        vm.prank(USER);
+        vm.expectRevert((DSCEngine.DSCEngine__NeedsMoreThanZero.selector));
+        dscEngine.depositCollateral(weth, zeroAmount);
+    }
+
+    /**
+     * @dev Verifies that the error handling for zero deposits works correctly
+     */
+    function testRevertIfDepositInvalidCollateral() public {
+        address invalidCollateral = makeAddr("LMAO");
+        uint256 depositAmount = 1;
+
+        vm.prank(USER);
+        vm.expectRevert(DSCEngine.DSCEngine__CollateralNotValid.selector);
+        dscEngine.depositCollateral(invalidCollateral, 1);
+    }
 }
