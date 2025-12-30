@@ -24,7 +24,7 @@ contract DSCEngineTest is Test {
     address wbtcUsdPriceFeed;
     address weth;
     address wbtc;
-    
+
     modifier userDeposited10Eth() {
         ERC20Mock(weth).mint(USER, 10e8);
         vm.startPrank(USER);
@@ -44,9 +44,9 @@ contract DSCEngineTest is Test {
     function setUp() public {
         deployer = new DeployDSC();
         (dscToken, dscEngine, config) = deployer.run();
-        (wethUsdPriceFeed, wbtcUsdPriceFeed, weth, wbtc, ) = config.activeNetworkConfig();
+        (wethUsdPriceFeed, wbtcUsdPriceFeed, weth, wbtc,) = config.activeNetworkConfig();
     }
-    
+
     /**
      * @dev Check the initial state of contract after deploy.
      */
@@ -70,7 +70,7 @@ contract DSCEngineTest is Test {
 
         assertEq(expectedUsd, actualUsd, "Invalid USD calculation!");
     }
-    
+
     /**
      * @dev Test health factor for a user that deposited 10 ether and
      *      dosen't have mint any dsc token yet.
@@ -91,10 +91,12 @@ contract DSCEngineTest is Test {
         uint256 ethPrice = uint256(config.ETH_USD_PRICE());
         uint256 totalCollateral = 10e8;
         uint256 totalDscMinted = 100e8;
-        uint256 expectedHealthFactor = (((((totalCollateral * (ethPrice * ADDITIONAL_FEED_PRECISION)) / PRECISION) * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION) * PRECISION) / totalDscMinted;
+        uint256 expectedHealthFactor =
+            (((((totalCollateral * (ethPrice * ADDITIONAL_FEED_PRECISION)) / PRECISION) * LIQUIDATION_THRESHOLD)
+                        / LIQUIDATION_PRECISION)
+                    * PRECISION) / totalDscMinted;
         uint256 actualHealthFacotr = dscEngine.getHealthFactor(USER);
 
         assertEq(expectedHealthFactor, actualHealthFacotr);
-        
-    } 
+    }
 }

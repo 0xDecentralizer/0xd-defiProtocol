@@ -8,7 +8,6 @@ import {MockV3Aggregator} from "../test/mocks/MockV3Aggregator.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
 contract HelperConfig is Script {
-
     struct NetworkConfig {
         address wethUsdPriceFeed;
         address wbtcUsdPriceFeed;
@@ -29,7 +28,7 @@ contract HelperConfig is Script {
         }
         activeNetworkConfig = getOrCreateAnvinNetworkConfig();
     }
-    
+
     function getSepoliaNetworkConfig() public returns (NetworkConfig memory) {
         return NetworkConfig({
             wethUsdPriceFeed: 0x694AA1769357215DE4FAC081bf1f309aDC325306,
@@ -59,6 +58,5 @@ contract HelperConfig is Script {
             wbtc: address(wbtcMock),
             deployerKey: DEFAULT_ANVIL_KEY
         });
-        
     }
 }
