@@ -74,6 +74,7 @@ contract DSCEngine is ReentrancyGuard {
     // Events
     event CollateralDeposited(address indexed depositor, address indexed depositedCollateral, uint256 indexed amount);
     event CollateralRedeemed(address indexed user, address indexed collateralTokenaddress, uint256 indexed amountCollateral);
+    event DscBurned(address indexed user, uint256 indexed amountDsc);
 
     // Modifiers
     modifier needsMoreThanZero(uint256 amount) {
@@ -173,6 +174,7 @@ contract DSCEngine is ReentrancyGuard {
             revert DSCEngine__TransferFaild();            
         }
         DSC_TOKEN.burn(amountDsc);
+        emit DscBurned(msg.sender, amountDsc);
     }
 
     function liquidate() external {}
