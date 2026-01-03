@@ -68,11 +68,12 @@ contract DSCEngine is ReentrancyGuard {
     DecentralizedStableCoin private immutable DSC_TOKEN;
     mapping(address token => address priceFeed) private priceFeeds;
     mapping(address user => mapping(address token => uint256 amount)) private collateralDeposited;
-    mapping(address user => uint256 amountDSCMinted) private DSCMinted;
+    mapping(address user => uint256 amountDSCMinted) private dscMinted;
     address[] private collateralTokens;
 
     // Events
     event CollateralDeposited(address indexed depositor, address indexed depositedCollateral, uint256 indexed amount);
+    event CollateralRedeemed(address indexed user, address indexed collateralTokenaddress, uint256 indexed amountCollateral);
 
     // Modifiers
     modifier needsMoreThanZero(uint256 amount) {
@@ -135,7 +136,20 @@ contract DSCEngine is ReentrancyGuard {
 
     function redeemCollateralForDsc() external {}
 
-    function redeemCollateral() external {}
+    function redeemCollateral(address collateralTokenAddress, uint256 amountCollateral)
+        external
+        needsMoreThanZero(amountCollateral)
+        isValidCollateral(collateralTokenAddress)
+        nonReentrant
+    {
+        collateralDeposited[msg.sender][collateralTokenAddress] -= amountCollateral;
+        (bool success) = IERC20(collateralTokenAddress).transfer(address(this), amountCollateral);
+        if (!success) {
+            revert DSCEngine__TransferFaild();
+        }
+        _revertIfHealthFactorIsBroken(msg.sender);
+        emit CollateralRedeemed(msg.sender, collateralTokenAddress, amountCollateral);
+    }
 
     /**
      * @notice Mints DSC to a user - Follow CEI
@@ -143,7 +157,7 @@ contract DSCEngine is ReentrancyGuard {
      * @dev Needs more than zero amount to mint
      */
     function mintDsc(uint256 amountDSC) public needsMoreThanZero(amountDSC) {
-        DSCMinted[msg.sender] += amountDSC;
+        dscMinted[msg.sender] += amountDSC;
         _revertIfHealthFactorIsBroken(msg.sender);
 
         bool minted = DSC_TOKEN.mint(msg.sender, amountDSC);
@@ -166,7 +180,7 @@ contract DSCEngine is ReentrancyGuard {
         view
         returns (uint256 totalDscMinted, uint256 collateralValueInUsd)
     {
-        totalDscMinted = DSCMinted[user];
+        totalDscMinted = dscMinted[user];
         collateralValueInUsd = getAccountCollateralValue(user);
     }
 
