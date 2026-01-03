@@ -137,7 +137,7 @@ contract DSCEngine is ReentrancyGuard {
     function redeemCollateralForDsc() external {}
 
     function redeemCollateral(address collateralTokenAddress, uint256 amountCollateral)
-        external
+        public
         needsMoreThanZero(amountCollateral)
         isValidCollateral(collateralTokenAddress)
         nonReentrant
@@ -166,7 +166,14 @@ contract DSCEngine is ReentrancyGuard {
         }
     }
 
-    function burnDsc() external {}
+    function burnDsc(uint256 amountDsc) public needsMoreThanZero(amountDsc) nonReentrant {
+        dscMinted[msg.sender] -= amountDsc;
+        bool success = DSC_TOKEN.transferFrom(msg.sender, address(this), amountDsc);
+        if (!success) {
+            revert DSCEngine__TransferFaild();            
+        }
+        DSC_TOKEN.burn(amountDsc);
+    }
 
     function liquidate() external {}
 
