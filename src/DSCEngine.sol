@@ -101,25 +101,37 @@ contract DSCEngine is ReentrancyGuard {
     // External Functions
     /**
      * @notice Deposits collateral into the DSC system
-     * @param collateralToeknAddress The address of the collateral token to deposit
+     * @param collateralTokenAddress The address of the collateral token to deposit
      * @param amount The amount of collateral to deposit
      */
-    function depositCollateral(address collateralToeknAddress, uint256 amount)
-        external
+    function depositCollateral(address collateralTokenAddress, uint256 amount)
+        public
         needsMoreThanZero(amount)
-        isValidCollateral(collateralToeknAddress)
+        isValidCollateral(collateralTokenAddress)
         nonReentrant
     {
         // TODO: implement deposit collateral logic
-        collateralDeposited[msg.sender][collateralToeknAddress] += amount;
-        emit CollateralDeposited(msg.sender, collateralToeknAddress, amount);
-        (bool success) = IERC20(collateralToeknAddress).transferFrom(msg.sender, address(this), amount);
+        collateralDeposited[msg.sender][collateralTokenAddress] += amount;
+        emit CollateralDeposited(msg.sender, collateralTokenAddress, amount);
+        (bool success) = IERC20(collateralTokenAddress).transferFrom(msg.sender, address(this), amount);
         if (!success) {
             revert DSCEngine__TransferFaild();
         }
     }
 
-    function depositCollateralAndMintIt() external {}
+    /**
+     *
+     * @param collateralTokenAddress The address of the collateral token to deposit
+     * @param amountCollateral The amount of collateral to deposit
+     * @param amountDsc The amount of DSC to mint
+     * @notice This function deposits collateral and mint DSC token in one transaction
+     */
+    function depositCollateralAndMintDsc(address collateralTokenAddress, uint256 amountCollateral, uint256 amountDsc)
+        external
+    {
+        depositCollateral(collateralTokenAddress, amountCollateral);
+        mintDsc(amountDsc);
+    }
 
     function redeemCollateralForDsc() external {}
 
@@ -130,7 +142,7 @@ contract DSCEngine is ReentrancyGuard {
      * @param amountDSC The amount of DSC to mint
      * @dev Needs more than zero amount to mint
      */
-    function mintDsc(uint256 amountDSC) external needsMoreThanZero(amountDSC) {
+    function mintDsc(uint256 amountDSC) public needsMoreThanZero(amountDSC) {
         DSCMinted[msg.sender] += amountDSC;
         _revertIfHealthFactorIsBroken(msg.sender);
 
