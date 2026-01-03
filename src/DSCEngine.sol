@@ -73,7 +73,9 @@ contract DSCEngine is ReentrancyGuard {
 
     // Events
     event CollateralDeposited(address indexed depositor, address indexed depositedCollateral, uint256 indexed amount);
-    event CollateralRedeemed(address indexed user, address indexed collateralTokenaddress, uint256 indexed amountCollateral);
+    event CollateralRedeemed(
+        address indexed user, address indexed collateralTokenaddress, uint256 indexed amountCollateral
+    );
     event DscBurned(address indexed user, uint256 indexed amountDsc);
 
     // Modifiers
@@ -135,7 +137,18 @@ contract DSCEngine is ReentrancyGuard {
         mintDsc(amountDsc);
     }
 
-    function redeemCollateralForDsc() external {}
+    /**
+     * @param collateralTokenAddress The address of the collateral token to redeem
+     * @param amountCollateral The amount of collateral to redeem
+     * @param amountDscToBurn The amount of DSC to burn
+     * @notice This function burns DSC token and redeem collateral at once (in one transacation)
+     */
+    function redeemCollateralForDsc(address collateralTokenAddress, uint256 amountCollateral, uint256 amountDscToBurn)
+        external
+    {
+        burnDsc(amountDscToBurn);
+        redeemCollateral(collateralTokenAddress, amountCollateral);
+    }
 
     function redeemCollateral(address collateralTokenAddress, uint256 amountCollateral)
         public
@@ -171,7 +184,7 @@ contract DSCEngine is ReentrancyGuard {
         dscMinted[msg.sender] -= amountDsc;
         bool success = DSC_TOKEN.transferFrom(msg.sender, address(this), amountDsc);
         if (!success) {
-            revert DSCEngine__TransferFaild();            
+            revert DSCEngine__TransferFaild();
         }
         DSC_TOKEN.burn(amountDsc);
         emit DscBurned(msg.sender, amountDsc);
