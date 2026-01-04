@@ -53,7 +53,7 @@ contract DSCEngine is ReentrancyGuard {
     // Errors
     error DSCEngine__NeedsMoreThanZero();
     error DSCEngine__CollateralNotValid();
-    error DSCEngine__TransferFaild();
+    error DSCEngine__TransferFailed();
     error DSCEngine__TokenAddressesAndPriceFeedsDontMatch();
     error DSCEngine__BreaksHealthFactor(uint256 userHealthFactor);
     error DSCEngine__MintFalied();
@@ -119,7 +119,7 @@ contract DSCEngine is ReentrancyGuard {
         emit CollateralDeposited(msg.sender, collateralTokenAddress, amount);
         (bool success) = IERC20(collateralTokenAddress).transferFrom(msg.sender, address(this), amount);
         if (!success) {
-            revert DSCEngine__TransferFaild();
+            revert DSCEngine__TransferFailed();
         }
     }
 
@@ -159,7 +159,7 @@ contract DSCEngine is ReentrancyGuard {
         collateralDeposited[msg.sender][collateralTokenAddress] -= amountCollateral;
         (bool success) = IERC20(collateralTokenAddress).transfer(msg.sender, amountCollateral);
         if (!success) {
-            revert DSCEngine__TransferFaild();
+            revert DSCEngine__TransferFailed();
         }
         _revertIfHealthFactorIsBroken(msg.sender);
         emit CollateralRedeemed(msg.sender, collateralTokenAddress, amountCollateral);
@@ -184,7 +184,7 @@ contract DSCEngine is ReentrancyGuard {
         dscMinted[msg.sender] -= amountDsc;
         bool success = DSC_TOKEN.transferFrom(msg.sender, address(this), amountDsc);
         if (!success) {
-            revert DSCEngine__TransferFaild();
+            revert DSCEngine__TransferFailed();
         }
         DSC_TOKEN.burn(amountDsc);
         emit DscBurned(msg.sender, amountDsc);
@@ -262,5 +262,9 @@ contract DSCEngine is ReentrancyGuard {
             totalCollateralValueInUsd += getUsdValue(token, amount);
         }
         return totalCollateralValueInUsd;
+    }
+
+    function getCollateralDeposited(address user, address collateral) public view returns (uint256) {
+        return collateralDeposited[user][collateral];
     }
 }
