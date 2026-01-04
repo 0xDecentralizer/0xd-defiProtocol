@@ -95,8 +95,8 @@ contract DSCEngineTest is Test {
      */
     function testGetHealthFactorAfterMintingDscToken() public userDeposited10EthOfWeth userMint100DscToken {
         uint256 ethPrice = uint256(config.ETH_USD_PRICE());
-        uint256 totalCollateralAmount = 10e8;
-        uint256 totalDscMinted = 100e8;
+        uint256 totalCollateralAmount = 10 ether;
+        uint256 totalDscMinted = 10 ether;
         uint256 totalCollateralValueInUsd =
             ((totalCollateralAmount * (ethPrice * ADDITIONAL_FEED_PRECISION)) / PRECISION);
         uint256 calculatedThreshold =
