@@ -16,6 +16,7 @@ contract DSCEngineTest is Test {
 
     address immutable USER = makeAddr("user 1");
     uint256 constant AMOUNT_COLLATERAL = 10 ether;
+    uint256 constant AMOUNT_DSC = 10 ether;
 
     DeployDSC deployer;
     DSCEngine dscEngine;
@@ -26,11 +27,11 @@ contract DSCEngineTest is Test {
     address weth;
     address wbtc;
 
-    modifier userDeposited10Eth() {
-        ERC20Mock(weth).mint(USER, 10e8);
+    modifier userDeposited10EthOfWeth() {
+        ERC20Mock(weth).mint(USER, AMOUNT_COLLATERAL);
         vm.startPrank(USER);
-        ERC20Mock(weth).approve(address(dscEngine), 10e8);
-        dscEngine.depositCollateral(weth, 10e8);
+        ERC20Mock(weth).approve(address(dscEngine), AMOUNT_COLLATERAL);
+        dscEngine.depositCollateral(weth, AMOUNT_COLLATERAL);
         vm.stopPrank();
 
         _;
@@ -38,7 +39,7 @@ contract DSCEngineTest is Test {
 
     modifier userMint100DscToken() {
         vm.prank(USER);
-        dscEngine.mintDsc(100e8);
+        dscEngine.mintDsc(AMOUNT_DSC);
         _;
     }
 
@@ -80,7 +81,7 @@ contract DSCEngineTest is Test {
      * @dev Test health factor for a user that deposited 10 ether and
      *      dosen't have mint any dsc token yet.
      */
-    function testGetHealthFactor() public userDeposited10Eth {
+    function testGetHealthFactor() public userDeposited10EthOfWeth {
         uint256 expectedHealthFactor = type(uint256).max;
         uint256 actualHealthFacotr = dscEngine.getHealthFactor(USER);
 
@@ -92,7 +93,7 @@ contract DSCEngineTest is Test {
      *      after a user deposits 10 WETH as collateral and mints 100 DSC,
      *      using the protocol's liquidation parameters and price feed precision.
      */
-    function testGetHealthFactorAfterMintingDscToken() public userDeposited10Eth userMint100DscToken {
+    function testGetHealthFactorAfterMintingDscToken() public userDeposited10EthOfWeth userMint100DscToken {
         uint256 ethPrice = uint256(config.ETH_USD_PRICE());
         uint256 totalCollateralAmount = 10e8;
         uint256 totalDscMinted = 100e8;
@@ -130,5 +131,15 @@ contract DSCEngineTest is Test {
         vm.prank(USER);
         vm.expectRevert(DSCEngine.DSCEngine__CollateralNotValid.selector);
         dscEngine.depositCollateral(invalidCollateral, AMOUNT_COLLATERAL);
+    }
+
+    function testDepositCollateralDoneSuccessfuly() public userDeposited10EthOfWeth {
+        uint256 expectedDeposit = AMOUNT_COLLATERAL;
+        uint256 actualDeposit = dscEngine.getCollateralDeposited(USER, weth);
+        uint256 expectedDscEngineBallanceAfterDeposit = AMOUNT_COLLATERAL;
+        uint256 actualDscEngineBallanceAfterDeposit = ERC20Mock(weth).balanceOf(address(dscEngine));
+
+        assertEq(expectedDeposit, actualDeposit);
+        assertEq(expectedDscEngineBallanceAfterDeposit, actualDscEngineBallanceAfterDeposit);
     }
 }
