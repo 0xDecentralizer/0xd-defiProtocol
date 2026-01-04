@@ -55,7 +55,7 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__CollateralNotValid();
     error DSCEngine__TransferFailed();
     error DSCEngine__TokenAddressesAndPriceFeedsDontMatch();
-    error DSCEngine__BreaksHealthFactor(uint256 userHealthFactor);
+    error DSCEngine__HealthFactorIsBroken(uint256 userHealthFactor);
     error DSCEngine__MintFalied();
 
     // State Variables
@@ -235,7 +235,7 @@ contract DSCEngine is ReentrancyGuard {
     function _revertIfHealthFactorIsBroken(address user) internal view {
         uint256 userHealthFactor = _healtFactor(user);
         if (userHealthFactor < MIN_HEALTH_FACTOR) {
-            revert DSCEngine__BreaksHealthFactor(userHealthFactor);
+            revert DSCEngine__HealthFactorIsBroken(userHealthFactor);
         }
     }
 
