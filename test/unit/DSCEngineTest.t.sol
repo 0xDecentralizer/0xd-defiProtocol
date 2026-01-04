@@ -16,7 +16,7 @@ contract DSCEngineTest is Test {
 
     address immutable USER = makeAddr("user 1");
     uint256 constant AMOUNT_COLLATERAL = 10 ether;
-    uint256 constant AMOUNT_DSC = 10 ether;
+    uint256 constant AMOUNT_DSC = 100 ether;
 
     DeployDSC deployer;
     DSCEngine dscEngine;
@@ -27,7 +27,7 @@ contract DSCEngineTest is Test {
     address weth;
     address wbtc;
 
-    modifier userDeposited10EthOfWeth() {
+    modifier userDeposited10Weth() {
         ERC20Mock(weth).mint(USER, AMOUNT_COLLATERAL);
         vm.startPrank(USER);
         ERC20Mock(weth).approve(address(dscEngine), AMOUNT_COLLATERAL);
@@ -81,7 +81,7 @@ contract DSCEngineTest is Test {
      * @dev Test health factor for a user that deposited 10 ether and
      *      dosen't have mint any dsc token yet.
      */
-    function testGetHealthFactor() public userDeposited10EthOfWeth {
+    function testGetHealthFactor() public userDeposited10Weth {
         uint256 expectedHealthFactor = type(uint256).max;
         uint256 actualHealthFacotr = dscEngine.getHealthFactor(USER);
 
@@ -93,10 +93,10 @@ contract DSCEngineTest is Test {
      *      after a user deposits 10 WETH as collateral and mints 100 DSC,
      *      using the protocol's liquidation parameters and price feed precision.
      */
-    function testGetHealthFactorAfterMintingDscToken() public userDeposited10EthOfWeth userMint100DscToken {
+    function testGetHealthFactorAfterMintingDscToken() public userDeposited10Weth userMint100DscToken {
         uint256 ethPrice = uint256(config.ETH_USD_PRICE());
-        uint256 totalCollateralAmount = 10 ether;
-        uint256 totalDscMinted = 10 ether;
+        uint256 totalCollateralAmount = AMOUNT_COLLATERAL;
+        uint256 totalDscMinted = AMOUNT_DSC;
         uint256 totalCollateralValueInUsd =
             ((totalCollateralAmount * (ethPrice * ADDITIONAL_FEED_PRECISION)) / PRECISION);
         uint256 calculatedThreshold =
@@ -133,7 +133,7 @@ contract DSCEngineTest is Test {
         dscEngine.depositCollateral(invalidCollateral, AMOUNT_COLLATERAL);
     }
 
-    function testDepositCollateralDoneSuccessfuly() public userDeposited10EthOfWeth {
+    function testDepositCollateralDoneSuccessfuly() public userDeposited10Weth {
         uint256 expectedDeposit = AMOUNT_COLLATERAL;
         uint256 actualDeposit = dscEngine.getCollateralDeposited(USER, weth);
         uint256 expectedDscEngineBallanceAfterDeposit = AMOUNT_COLLATERAL;
@@ -154,5 +154,12 @@ contract DSCEngineTest is Test {
         vm.prank(USER);
         vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__HealthFactorIsBroken.selector, 0));
         dscEngine.mintDsc(AMOUNT_DSC);
+    }
+
+    function testMintDsc() public userDeposited10Weth userMint100DscToken {
+        uint256 expectedDscMinted = AMOUNT_DSC;
+        (uint256 actualDscMinted, ) = dscEngine.getAccountInformation(USER);
+
+        assertEq(expectedDscMinted, actualDscMinted);
     }
 }

@@ -197,14 +197,6 @@ contract DSCEngine is ReentrancyGuard {
     }
 
     // Private & Internal Functions
-    function _getAccountInformation(address user)
-        private
-        view
-        returns (uint256 totalDscMinted, uint256 collateralValueInUsd)
-    {
-        totalDscMinted = dscMinted[user];
-        collateralValueInUsd = getAccountCollateralValue(user);
-    }
 
     function _needsMoreThanZero(uint256 amount) internal pure {
         if (amount <= 0) {
@@ -224,7 +216,7 @@ contract DSCEngine is ReentrancyGuard {
      * @return The health factor of the user
      */
     function _healtFactor(address user) private view returns (uint256) {
-        (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
+        (uint256 totalDscMinted, uint256 collateralValueInUsd) = getAccountInformation(user);
         uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
         if (totalDscMinted == 0) {
             return type(uint256).max; // Infinite
@@ -240,6 +232,15 @@ contract DSCEngine is ReentrancyGuard {
     }
 
     // Public & External View Function
+    function getAccountInformation(address user)
+        public
+        view
+        returns (uint256 totalDscMinted, uint256 collateralValueInUsd)
+    {
+        totalDscMinted = dscMinted[user];
+        collateralValueInUsd = getAccountCollateralValue(user);
+    }
+
     function getPriceFeed(address collateralTokenAddress) public view returns (address) {
         return priceFeeds[collateralTokenAddress];
     }
