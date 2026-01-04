@@ -142,4 +142,17 @@ contract DSCEngineTest is Test {
         assertEq(expectedDeposit, actualDeposit);
         assertEq(expectedDscEngineBallanceAfterDeposit, actualDscEngineBallanceAfterDeposit);
     }
+
+    ///////////////////////////////////////
+    /////          Mint DSC          //////
+    ///////////////////////////////////////
+
+    /**
+     * @dev When a user doesn't deposit any collateral, any try for minting DSC will fail.
+     */
+    function testRevertToMintDscWhenHealthFactorIsBroken() public {
+        vm.prank(USER);
+        vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__HealthFactorIsBroken.selector, 0));
+        dscEngine.mintDsc(AMOUNT_DSC);
+    }
 }
