@@ -114,7 +114,6 @@ contract DSCEngine is ReentrancyGuard {
         isValidCollateral(collateralTokenAddress)
         nonReentrant
     {
-        // TODO: implement deposit collateral logic
         collateralDeposited[msg.sender][collateralTokenAddress] += amount;
         emit CollateralDeposited(msg.sender, collateralTokenAddress, amount);
         (bool success) = IERC20(collateralTokenAddress).transferFrom(msg.sender, address(this), amount);
@@ -157,11 +156,11 @@ contract DSCEngine is ReentrancyGuard {
         nonReentrant
     {
         collateralDeposited[msg.sender][collateralTokenAddress] -= amountCollateral;
+        _revertIfHealthFactorIsBroken(msg.sender);
         (bool success) = IERC20(collateralTokenAddress).transfer(msg.sender, amountCollateral);
         if (!success) {
             revert DSCEngine__TransferFailed();
         }
-        _revertIfHealthFactorIsBroken(msg.sender);
         emit CollateralRedeemed(msg.sender, collateralTokenAddress, amountCollateral);
     }
 
@@ -250,6 +249,7 @@ contract DSCEngine is ReentrancyGuard {
     }
 
     function getUsdValue(address token, uint256 amount) public view returns (uint256) {
+        if (amount == 0) return 0;
         AggregatorV3Interface priceFeed = AggregatorV3Interface(priceFeeds[token]);
         (, int256 price,,,) = priceFeed.latestRoundData();
         return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
