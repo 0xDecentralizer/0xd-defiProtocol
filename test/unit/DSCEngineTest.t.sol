@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, console} from "forge-std/Test.sol";
 import {DeployDSC} from "../../script/DeployDSC.s.sol";
 import {DSCEngine} from "../../src/DSCEngine.sol";
 import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {MockV3Aggregator} from "../mocks/MockV3Aggregator.sol";
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 contract DSCEngineTest is Test {
     uint256 private constant LIQUIDATION_THRESHOLD = 50; // 200%
@@ -158,8 +160,51 @@ contract DSCEngineTest is Test {
 
     function testMintDsc() public userDeposited10Weth userMint100DscToken {
         uint256 expectedDscMinted = AMOUNT_DSC;
-        (uint256 actualDscMinted, ) = dscEngine.getAccountInformation(USER);
+        (uint256 actualDscMinted,) = dscEngine.getAccountInformation(USER);
 
         assertEq(expectedDscMinted, actualDscMinted);
+    }
+
+    ///////////////////////////////////////
+    /////          Burn DSC          //////
+    ///////////////////////////////////////
+
+    function testBurnDscCorrectly() public userDeposited10Weth userMint100DscToken {
+        vm.startPrank(USER);
+        IERC20(address(dscToken)).approve(address(dscEngine), 10 ether);
+        dscEngine.burnDsc(10 ether);
+        vm.stopPrank();
+    }
+
+    ///////////////////////////////////
+    //////       Liquidate       //////
+    ///////////////////////////////////
+
+    /**
+     * @dev When a liquidator want to liquid a user, with an invalid type of collateral.
+     * For example:
+     *   - User deposits 2 WETH
+     *   - Liquidator want to liquidate user with WBTC as input
+     */
+    function testRevertIfLiquidatorTryToLiquidUserWithInvalidCollateral() public userDeposited10Weth {
+        vm.prank(USER);
+        dscEngine.mintDsc(15000e18);
+
+        address liquidator = address(0x1);
+        ERC20Mock(weth).mint(liquidator, AMOUNT_COLLATERAL);
+        vm.startPrank(liquidator);
+        ERC20Mock(weth).approve(address(dscEngine), AMOUNT_COLLATERAL);
+        dscEngine.depositCollateral(weth, AMOUNT_COLLATERAL);
+        dscEngine.mintDsc(10000e18);
+        vm.stopPrank();
+
+        MockV3Aggregator wethPriceFeed = MockV3Aggregator(wethUsdPriceFeed);
+        wethPriceFeed.updateAnswer(2500e8);
+
+        vm.startPrank(liquidator);
+        IERC20(address(dscToken)).approve(address(dscEngine), 1000e18);
+        vm.expectRevert(DSCEngine.DSCEngine__UserDontHaveThisCollateral.selector);
+        dscEngine.liquidate(wbtc, USER, 1000e18);
+        vm.stopPrank();
     }
 }
