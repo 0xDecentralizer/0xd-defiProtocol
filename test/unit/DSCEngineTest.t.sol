@@ -9,6 +9,7 @@ import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {MockV3Aggregator} from "../mocks/MockV3Aggregator.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {ERC20MockRevertable} from "../mocks/ERC20MockRevertable.sol";
 
 contract DSCEngineTest is Test {
     uint256 private constant LIQUIDATION_THRESHOLD = 50; // 200%
@@ -152,6 +153,26 @@ contract DSCEngineTest is Test {
         vm.expectEmit(true, true, true, false);
         emit DSCEngine.CollateralDeposited(USER, weth, AMOUNT_COLLATERAL);
         dscEngine.depositCollateral(weth, AMOUNT_COLLATERAL);
+    }
+
+    function testRevertWhenTransferFailsInDepositCollateralFunction() public {
+        ERC20MockRevertable revertableWeth;
+        DSCEngine dsce;
+        address[] memory _collaterals = new address[](2);
+        address[] memory _priceFeeds = new address[](2);
+
+        revertableWeth = new ERC20MockRevertable();
+        (_collaterals[0], _collaterals[1]) = (address(revertableWeth), wbtc);
+        (_priceFeeds[0], _priceFeeds[1]) = ((wethUsdPriceFeed), wbtcUsdPriceFeed);
+        
+        dsce = new DSCEngine(_collaterals, _priceFeeds, address(dscToken));
+
+        ERC20MockRevertable(revertableWeth).mint(USER, AMOUNT_COLLATERAL);
+        ERC20MockRevertable(revertableWeth).setTransferFromRetrunFalse;
+        vm.startPrank(USER);
+        ERC20MockRevertable(revertableWeth).approve(address(dsce), AMOUNT_COLLATERAL);
+        vm.expectRevert(DSCEngine.DSCEngine__TransferFailed.selector);
+        dsce.depositCollateral(address(revertableWeth), AMOUNT_COLLATERAL);
     }
 
     ///////////////////////////////////////
