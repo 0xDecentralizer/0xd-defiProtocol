@@ -145,6 +145,15 @@ contract DSCEngineTest is Test {
         assertEq(expectedDscEngineBallanceAfterDeposit, actualDscEngineBallanceAfterDeposit);
     }
 
+    function testDepositEmitTheEventSuccessfuly() public {
+        ERC20Mock(weth).mint(USER, AMOUNT_COLLATERAL);
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(dscEngine), AMOUNT_COLLATERAL);
+        vm.expectEmit(true, true, true, false);
+        emit DSCEngine.CollateralDeposited(USER, weth, AMOUNT_COLLATERAL);
+        dscEngine.depositCollateral(weth, AMOUNT_COLLATERAL);
+    }
+
     ///////////////////////////////////////
     /////          Mint DSC          //////
     ///////////////////////////////////////
