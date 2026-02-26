@@ -178,8 +178,8 @@ contract DSCEngineTest is Test {
     function testDepositCollateralsAndMintDscAtOnce() public {
         ERC20Mock(weth).mint(USER, AMOUNT_COLLATERAL);
         uint256 collateralValueInUsd = dscEngine.getUsdValue(weth, AMOUNT_COLLATERAL) * PRECISION;
-        uint256 collateralAdjustedTreshold = ((collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION);
-        uint256 expectedHealthFactor = collateralAdjustedTreshold / AMOUNT_DSC;
+        uint256 collateralAdjustedThreshold = ((collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION);
+        uint256 expectedHealthFactor = collateralAdjustedThreshold / AMOUNT_DSC;
         uint256 expectedCollateralDeposited = AMOUNT_COLLATERAL;
         uint256 expectedDscMinted = AMOUNT_DSC;
 
@@ -208,6 +208,27 @@ contract DSCEngineTest is Test {
         vm.prank(USER);
         vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__HealthFactorIsBroken.selector, 0));
         dscEngine.mintDsc(AMOUNT_DSC);
+    }
+
+    /**
+     * @dev Reverts when a user attempts to mint DSC exceeding the allowed collateralization threshold.
+     *
+     * Ensures that the protocol prevents minting if it would result in
+     * a health factor below the minimum required threshold.
+     */
+    function testRevertIfMintingDscBreaksHealthFactor() public userDeposited10Weth {
+        uint256 dscAmountToMint = 50_000e18; // 50,000 DSC (= $50,000) > 10 ETH (= $30,000)
+        uint256 healthFactorBeforeMint = dscEngine.getHealthFactor(USER);
+        
+        uint256 collateralValueInUsd = (dscEngine.getUsdValue(weth, AMOUNT_COLLATERAL)) * PRECISION;
+        uint256 collateralAdjustedThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+        uint256 healthFactorAfterMint = collateralAdjustedThreshold / dscAmountToMint;
+
+        assertGt(healthFactorBeforeMint, healthFactorAfterMint);
+
+        vm.prank(USER);
+        vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__HealthFactorIsBroken.selector, healthFactorAfterMint));
+        dscEngine.mintDsc(dscAmountToMint);
     }
 
     function testMintDsc() public userDeposited10Weth userMint100DscToken {
