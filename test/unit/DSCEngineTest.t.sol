@@ -8,7 +8,6 @@ import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {MockV3Aggregator} from "../mocks/MockV3Aggregator.sol";
-import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {ERC20MockRevertable} from "../mocks/ERC20MockRevertable.sol";
 
 contract DSCEngineTest is Test {
@@ -288,10 +287,46 @@ contract DSCEngineTest is Test {
     ///////////////////////////////////////
 
     function testBurnDscCorrectly() public userDeposited10Weth userMint100DscToken {
+        uint256 amountToBurn = 10e18;
+        uint256 userBalanceBeforeBurn = ERC20Mock(address(dscToken)).balanceOf(USER);
+
         vm.startPrank(USER);
-        IERC20(address(dscToken)).approve(address(dscEngine), 10 ether);
-        dscEngine.burnDsc(10 ether);
+        ERC20Mock(address(dscToken)).approve(address(dscEngine), amountToBurn);
+        vm.expectEmit(true, true, true, false);
+        emit DSCEngine.DscBurned(USER, USER, amountToBurn);
+        dscEngine.burnDsc(amountToBurn);
         vm.stopPrank();
+
+        uint256 userBalanceAfterBurn = ERC20Mock(address(dscToken)).balanceOf(USER);
+
+        assertEq(userBalanceBeforeBurn, userBalanceAfterBurn + amountToBurn);
+    }
+
+    function testRevertIfTransferFromRevertsInBurnFunction() public {
+        uint256 amountDscToBurn = 1e18;
+        ERC20MockRevertable revertableDsc = new ERC20MockRevertable();
+        DSCEngine dsce;
+        address[] memory _collaterals = new address[](2);
+        address[] memory _priceFeeds = new address[](2);
+
+        (_collaterals[0], _collaterals[1]) = (weth, wbtc);
+        (_priceFeeds[0], _priceFeeds[1]) = (wethUsdPriceFeed, wbtcUsdPriceFeed);
+        dsce = new DSCEngine(_collaterals, _priceFeeds, address(revertableDsc));
+
+        
+        // Deposit collateral and mint DSC before burning
+        ERC20Mock(weth).mint(USER, AMOUNT_COLLATERAL);
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
+        dsce.depositCollateral(weth, AMOUNT_COLLATERAL);
+        dsce.mintDsc(AMOUNT_DSC);
+        vm.stopPrank();
+
+        ERC20MockRevertable(revertableDsc).setShouldRevertTrue();
+        vm.prank(USER);
+        vm.expectRevert(DSCEngine.DSCEngine__TransferFailed.selector);
+        dsce.burnDsc(amountDscToBurn);
+        ERC20MockRevertable(revertableDsc).setShouldRevertTrue();
     }
 
     ///////////////////////////////////
@@ -320,7 +355,7 @@ contract DSCEngineTest is Test {
         wethPriceFeed.updateAnswer(2500e8);
 
         vm.startPrank(liquidator);
-        IERC20(address(dscToken)).approve(address(dscEngine), 1000e18);
+        ERC20Mock(address(dscToken)).approve(address(dscEngine), 1000e18);
         vm.expectRevert(DSCEngine.DSCEngine__UserDontHaveThisCollateral.selector);
         dscEngine.liquidate(wbtc, USER, 1000e18);
         vm.stopPrank();
