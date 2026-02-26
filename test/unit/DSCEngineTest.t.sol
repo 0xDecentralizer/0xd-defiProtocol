@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {Test, console} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {DeployDSC} from "../../script/DeployDSC.s.sol";
 import {DSCEngine} from "../../src/DSCEngine.sol";
 import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
@@ -29,6 +29,7 @@ contract DSCEngineTest is Test {
     address weth;
     address wbtc;
 
+    // ----------- Modifiers -----------
     modifier userDeposited10Weth() {
         ERC20Mock(weth).mint(USER, AMOUNT_COLLATERAL);
         vm.startPrank(USER);
@@ -51,10 +52,25 @@ contract DSCEngineTest is Test {
         (wethUsdPriceFeed, wbtcUsdPriceFeed, weth, wbtc,) = config.activeNetworkConfig();
     }
 
-    /**
-     * @dev Check the initial state of contract after deploy.
-     */
-    function testCheckInitialState() public view {
+    // ----------- Helpers -----------
+    function _deployEngineWithDsc(address dscAddress) internal returns (DSCEngine) {
+        address[] memory collaterals = new address[](2);
+        address[] memory priceFeeds = new address[](2);
+        (collaterals[0], collaterals[1]) = (weth, wbtc);
+        (priceFeeds[0], priceFeeds[1]) = (wethUsdPriceFeed, wbtcUsdPriceFeed);
+        return new DSCEngine(collaterals, priceFeeds, dscAddress);
+    }
+
+    function _depositWethForUser(DSCEngine engine, uint256 amount) internal {
+        ERC20Mock(weth).mint(USER, amount);
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(engine), amount);
+        engine.depositCollateral(weth, amount);
+        vm.stopPrank();
+    }
+
+    // ----------- Constructor -----------
+    function test_Constructor_InitialStateIsConfigured() public view {
         address priceFeedAddress0 = wethUsdPriceFeed;
         address priceFeedAddress1 = wbtcUsdPriceFeed;
         address dscTokenAddress = address(dscToken);
@@ -64,38 +80,24 @@ contract DSCEngineTest is Test {
         assertEq(dscEngine.getDscTokenAddress(), dscTokenAddress);
     }
 
-    /**
-     * @dev Get the USD value of a token and check the correctness.
-     */
-    function testGetUsdValue() public {
+    // ----------- View Functions -----------
+    function test_GetUsdValue_ReturnsExpectedUsd() public {
         uint256 amount = 3;
         uint256 expectedUsd = 9_000;
         uint256 actualUsd = dscEngine.getUsdValue(weth, amount);
 
-        assertEq(expectedUsd, actualUsd, "Invalid USD calculation!");
+        assertEq(expectedUsd, actualUsd);
     }
 
-    ///////////////////////////////////
-    //////     Health Factor     //////
-    ///////////////////////////////////
-
-    /**
-     * @dev Test health factor for a user that deposited 10 ether and
-     *      dosen't have mint any dsc token yet.
-     */
-    function testGetHealthFactor() public userDeposited10Weth {
+    // ----------- Health Factor -----------
+    function test_GetHealthFactor_NoDebt_ReturnsMax() public userDeposited10Weth {
         uint256 expectedHealthFactor = type(uint256).max;
-        uint256 actualHealthFacotr = dscEngine.getHealthFactor(USER);
+        uint256 actualHealthFactor = dscEngine.getHealthFactor(USER);
 
-        assertEq(expectedHealthFactor, actualHealthFacotr);
+        assertEq(expectedHealthFactor, actualHealthFactor);
     }
 
-    /**
-     * @dev Verifies that the health factor is calculated correctly
-     *      after a user deposits 10 WETH as collateral and mints 100 DSC,
-     *      using the protocol's liquidation parameters and price feed precision.
-     */
-    function testGetHealthFactorAfterMintingDscToken() public userDeposited10Weth userMint100DscToken {
+    function test_GetHealthFactor_AfterMinting_ReturnsExpectedValue() public userDeposited10Weth userMint100DscToken {
         uint256 ethPrice = uint256(config.ETH_USD_PRICE());
         uint256 totalCollateralAmount = AMOUNT_COLLATERAL;
         uint256 totalDscMinted = AMOUNT_DSC;
@@ -104,30 +106,19 @@ contract DSCEngineTest is Test {
         uint256 calculatedThreshold =
             (((totalCollateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION) * PRECISION);
         uint256 expectedHealthFactor = calculatedThreshold / totalDscMinted;
-        uint256 actualHealthFacotr = dscEngine.getHealthFactor(USER);
+        uint256 actualHealthFactor = dscEngine.getHealthFactor(USER);
 
-        assertEq(expectedHealthFactor, actualHealthFacotr);
+        assertEq(expectedHealthFactor, actualHealthFactor);
     }
 
-    ///////////////////////////////////////
-    /////     Deposit Collateral     //////
-    ///////////////////////////////////////
-
-    /**
-     * @dev Verifies that the error handling for zero deposits works correctly
-     */
-    function testRevertIfDepositZeroAmountCollateral() public {
-        uint256 zeroAmount = 0;
-
+    // ----------- Deposit Collateral -----------
+    function test_DepositCollateral_RevertsOnZeroAmount() public {
         vm.prank(USER);
         vm.expectRevert((DSCEngine.DSCEngine__NeedsMoreThanZero.selector));
-        dscEngine.depositCollateral(weth, zeroAmount);
+        dscEngine.depositCollateral(weth, 0);
     }
 
-    /**
-     * @dev Verifies that the error handling for zero deposits works correctly
-     */
-    function testRevertIfDepositInvalidCollateral() public {
+    function test_DepositCollateral_RevertsOnInvalidCollateral() public {
         address invalidCollateral = makeAddr("LMAO");
 
         vm.prank(USER);
@@ -135,49 +126,45 @@ contract DSCEngineTest is Test {
         dscEngine.depositCollateral(invalidCollateral, AMOUNT_COLLATERAL);
     }
 
-    function testDepositCollateralDoneSuccessfuly() public userDeposited10Weth {
+    function test_DepositCollateral_UpdatesUserAndEngineBalances() public userDeposited10Weth {
         uint256 expectedDeposit = AMOUNT_COLLATERAL;
         uint256 actualDeposit = dscEngine.getCollateralDeposited(USER, weth);
-        uint256 expectedDscEngineBallanceAfterDeposit = AMOUNT_COLLATERAL;
-        uint256 actualDscEngineBallanceAfterDeposit = ERC20Mock(weth).balanceOf(address(dscEngine));
+        uint256 expectedEngineBalanceAfterDeposit = AMOUNT_COLLATERAL;
+        uint256 actualEngineBalanceAfterDeposit = ERC20Mock(weth).balanceOf(address(dscEngine));
 
         assertEq(expectedDeposit, actualDeposit);
-        assertEq(expectedDscEngineBallanceAfterDeposit, actualDscEngineBallanceAfterDeposit);
+        assertEq(expectedEngineBalanceAfterDeposit, actualEngineBalanceAfterDeposit);
     }
 
-    function testDepositEmitTheEventSuccessfuly() public {
+    function test_DepositCollateral_EmitsEvent() public {
         ERC20Mock(weth).mint(USER, AMOUNT_COLLATERAL);
         vm.startPrank(USER);
         ERC20Mock(weth).approve(address(dscEngine), AMOUNT_COLLATERAL);
         vm.expectEmit(true, true, true, false);
         emit DSCEngine.CollateralDeposited(USER, weth, AMOUNT_COLLATERAL);
         dscEngine.depositCollateral(weth, AMOUNT_COLLATERAL);
+        vm.stopPrank();
     }
 
-    function testRevertWhenTransferFailsInDepositCollateralFunction() public {
-        ERC20MockRevertable revertableWeth;
-        DSCEngine dsce;
-        address[] memory _collaterals = new address[](2);
-        address[] memory _priceFeeds = new address[](2);
+    function test_DepositCollateral_RevertsWhenTransferFails() public {
+        ERC20MockRevertable revertableWeth = new ERC20MockRevertable();
+        address[] memory collaterals = new address[](2);
+        address[] memory priceFeeds = new address[](2);
+        (collaterals[0], collaterals[1]) = (address(revertableWeth), wbtc);
+        (priceFeeds[0], priceFeeds[1]) = (wethUsdPriceFeed, wbtcUsdPriceFeed);
+        DSCEngine engine = new DSCEngine(collaterals, priceFeeds, address(dscToken));
 
-        revertableWeth = new ERC20MockRevertable();
-        (_collaterals[0], _collaterals[1]) = (address(revertableWeth), wbtc);
-        (_priceFeeds[0], _priceFeeds[1]) = ((wethUsdPriceFeed), wbtcUsdPriceFeed);
-
-        dsce = new DSCEngine(_collaterals, _priceFeeds, address(dscToken));
-
-        ERC20MockRevertable(revertableWeth).mint(USER, AMOUNT_COLLATERAL);
-        ERC20MockRevertable(revertableWeth).setShouldRevertTrue();
+        revertableWeth.mint(USER, AMOUNT_COLLATERAL);
+        revertableWeth.setShouldRevertTrue();
 
         vm.startPrank(USER);
-        ERC20MockRevertable(revertableWeth).approve(address(dsce), AMOUNT_COLLATERAL);
+        revertableWeth.approve(address(engine), AMOUNT_COLLATERAL);
         vm.expectRevert(DSCEngine.DSCEngine__TransferFailed.selector);
-        dsce.depositCollateral(address(revertableWeth), AMOUNT_COLLATERAL);
-
-        ERC20MockRevertable(revertableWeth).setShouldRevertFalse();
+        engine.depositCollateral(address(revertableWeth), AMOUNT_COLLATERAL);
+        vm.stopPrank();
     }
 
-    function testDepositCollateralsAndMintDscAtOnce() public {
+    function test_DepositCollateralAndMintDsc_UpdatesState() public {
         ERC20Mock(weth).mint(USER, AMOUNT_COLLATERAL);
         uint256 collateralValueInUsd = dscEngine.getUsdValue(weth, AMOUNT_COLLATERAL) * PRECISION;
         uint256 collateralAdjustedThreshold = ((collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION);
@@ -199,26 +186,14 @@ contract DSCEngineTest is Test {
         assertEq(expectedDscMinted, actualDscMinted);
     }
 
-    ///////////////////////////////////////
-    /////          Mint DSC          //////
-    ///////////////////////////////////////
-
-    /**
-     * @dev When a user doesn't deposit any collateral, any try for minting DSC will fail.
-     */
-    function testRevertToMintDscWhenHealthFactorIsBroken() public {
+    // ----------- Mint DSC -----------
+    function test_MintDsc_RevertsWhenUserHasNoCollateral() public {
         vm.prank(USER);
         vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__HealthFactorIsBroken.selector, 0));
         dscEngine.mintDsc(AMOUNT_DSC);
     }
 
-    /**
-     * @dev Reverts when a user attempts to mint DSC exceeding the allowed collateralization threshold.
-     *
-     * Ensures that the protocol prevents minting if it would result in
-     * a health factor below the minimum required threshold.
-     */
-    function testRevertIfMintingDscBreaksHealthFactor() public userDeposited10Weth {
+    function test_MintDsc_RevertsWhenHealthFactorBreaks() public userDeposited10Weth {
         uint256 dscAmountToMint = 50_000e18; // 50,000 DSC (= $50,000) > 10 ETH (= $30,000)
         uint256 healthFactorBeforeMint = dscEngine.getHealthFactor(USER);
 
@@ -235,41 +210,25 @@ contract DSCEngineTest is Test {
         dscEngine.mintDsc(dscAmountToMint);
     }
 
-    function testRevertIfMintingZeroAmountOfDsc() public {
-        uint256 dscAmountToMint = 0;
-
+    function test_MintDsc_RevertsOnZeroAmount() public {
         vm.prank(USER);
         vm.expectRevert(DSCEngine.DSCEngine__NeedsMoreThanZero.selector);
         dscEngine.mintDsc(0);
     }
 
-    function testRevertIfMintingFails() public {
+    function test_MintDsc_RevertsWhenTokenMintFails() public {
         ERC20MockRevertable revertableDsc = new ERC20MockRevertable();
-        DSCEngine dsce;
-        address[] memory _collaterals = new address[](2);
-        address[] memory _priceFeeds = new address[](2);
+        DSCEngine engine = _deployEngineWithDsc(address(revertableDsc));
+        _depositWethForUser(engine, AMOUNT_COLLATERAL);
 
-        (_collaterals[0], _collaterals[1]) = (weth, wbtc);
-        (_priceFeeds[0], _priceFeeds[1]) = (wethUsdPriceFeed, wbtcUsdPriceFeed);
-        dsce = new DSCEngine(_collaterals, _priceFeeds, address(revertableDsc));
-
-        // Deposit collateral before minting DSC
-        ERC20Mock(weth).mint(USER, AMOUNT_COLLATERAL);
-        vm.startPrank(USER);
-        ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
-        dsce.depositCollateral(weth, AMOUNT_COLLATERAL);
-        vm.stopPrank();
-
-        ERC20MockRevertable(revertableDsc).setShouldRevertTrue();
+        revertableDsc.setShouldRevertTrue();
 
         vm.prank(USER);
         vm.expectRevert(DSCEngine.DSCEngine__MintFalied.selector);
-        dsce.mintDsc(AMOUNT_DSC);
-
-        ERC20MockRevertable(revertableDsc).setShouldRevertTrue();
+        engine.mintDsc(AMOUNT_DSC);
     }
 
-    function testMintDsc() public userDeposited10Weth userMint100DscToken {
+    function test_MintDsc_UpdatesDebtAndHealthFactor() public userDeposited10Weth userMint100DscToken {
         uint256 expectedDscMinted = AMOUNT_DSC;
         uint256 collateralValueInUsd = dscEngine.getAccountCollateralValue(USER) * PRECISION;
         uint256 expectedHealthFactor =
@@ -282,11 +241,8 @@ contract DSCEngineTest is Test {
         assertEq(expectedHealthFactor, actualHealthFactor);
     }
 
-    ///////////////////////////////////////
-    /////          Burn DSC          //////
-    ///////////////////////////////////////
-
-    function testBurnDscCorrectly() public userDeposited10Weth userMint100DscToken {
+    // ----------- Burn DSC -----------
+    function test_BurnDsc_BurnsAndEmitsEvent() public userDeposited10Weth userMint100DscToken {
         uint256 amountToBurn = 10e18;
         uint256 userBalanceBeforeBurn = ERC20Mock(address(dscToken)).balanceOf(USER);
 
@@ -302,44 +258,23 @@ contract DSCEngineTest is Test {
         assertEq(userBalanceBeforeBurn, userBalanceAfterBurn + amountToBurn);
     }
 
-    function testRevertIfTransferFromRevertsInBurnFunction() public {
+    function test_BurnDsc_RevertsWhenTransferFromFails() public {
         uint256 amountDscToBurn = 1e18;
         ERC20MockRevertable revertableDsc = new ERC20MockRevertable();
-        DSCEngine dsce;
-        address[] memory _collaterals = new address[](2);
-        address[] memory _priceFeeds = new address[](2);
+        DSCEngine engine = _deployEngineWithDsc(address(revertableDsc));
 
-        (_collaterals[0], _collaterals[1]) = (weth, wbtc);
-        (_priceFeeds[0], _priceFeeds[1]) = (wethUsdPriceFeed, wbtcUsdPriceFeed);
-        dsce = new DSCEngine(_collaterals, _priceFeeds, address(revertableDsc));
+        _depositWethForUser(engine, AMOUNT_COLLATERAL);
+        vm.prank(USER);
+        engine.mintDsc(AMOUNT_DSC);
 
-        
-        // Deposit collateral and mint DSC before burning
-        ERC20Mock(weth).mint(USER, AMOUNT_COLLATERAL);
-        vm.startPrank(USER);
-        ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
-        dsce.depositCollateral(weth, AMOUNT_COLLATERAL);
-        dsce.mintDsc(AMOUNT_DSC);
-        vm.stopPrank();
-
-        ERC20MockRevertable(revertableDsc).setShouldRevertTrue();
+        revertableDsc.setShouldRevertTrue();
         vm.prank(USER);
         vm.expectRevert(DSCEngine.DSCEngine__TransferFailed.selector);
-        dsce.burnDsc(amountDscToBurn);
-        ERC20MockRevertable(revertableDsc).setShouldRevertTrue();
+        engine.burnDsc(amountDscToBurn);
     }
 
-    ///////////////////////////////////
-    //////       Liquidate       //////
-    ///////////////////////////////////
-
-    /**
-     * @dev When a liquidator want to liquid a user, with an invalid type of collateral.
-     * For example:
-     *   - User deposits 2 WETH
-     *   - Liquidator want to liquidate user with WBTC as input
-     */
-    function testRevertIfLiquidatorTryToLiquidUserWithInvalidCollateral() public userDeposited10Weth {
+    // ----------- Liquidate -----------
+    function test_Liquidate_RevertsWhenTargetCollateralDoesNotExist() public userDeposited10Weth {
         vm.prank(USER);
         dscEngine.mintDsc(15000e18);
 
