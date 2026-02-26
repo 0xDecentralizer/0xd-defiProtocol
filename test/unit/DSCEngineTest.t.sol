@@ -175,6 +175,28 @@ contract DSCEngineTest is Test {
         dsce.depositCollateral(address(revertableWeth), AMOUNT_COLLATERAL);
     }
 
+    function testDepositCollateralsAndMintDscAtOnce() public {
+        ERC20Mock(weth).mint(USER, AMOUNT_COLLATERAL);
+        uint256 collateralValueInUsd = dscEngine.getUsdValue(weth, AMOUNT_COLLATERAL) * PRECISION;
+        uint256 collateralAdjustedTreshold = ((collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION);
+        uint256 expectedHealthFactor = collateralAdjustedTreshold / AMOUNT_DSC;
+        uint256 expectedCollateralDeposited = AMOUNT_COLLATERAL;
+        uint256 expectedDscMinted = AMOUNT_DSC;
+
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(dscEngine), AMOUNT_COLLATERAL);
+        dscEngine.depositCollateralAndMintDsc(weth, AMOUNT_COLLATERAL, AMOUNT_DSC);
+        vm.stopPrank();
+
+        uint256 actualHealthFactor = dscEngine.getHealthFactor(USER);
+        uint256 actualCollateralDeposited = dscEngine.getCollateralDeposited(USER, weth);
+        uint256 actualDscMinted = dscEngine.getDscMinted(USER);
+
+        assertEq(expectedHealthFactor, actualHealthFactor);
+        assertEq(expectedCollateralDeposited, actualCollateralDeposited);
+        assertEq(expectedDscMinted, actualDscMinted);
+    }
+
     ///////////////////////////////////////
     /////          Mint DSC          //////
     ///////////////////////////////////////
