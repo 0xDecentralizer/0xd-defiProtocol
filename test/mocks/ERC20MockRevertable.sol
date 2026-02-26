@@ -29,6 +29,6 @@ contract ERC20MockRevertable is ERC20 {
         if (sohuldTransferFromReturnFalse) {
             return false;
         }
-        super.transferFrom(from, to, value);
+        return super.transferFrom(from, to, value);
     }
 }
