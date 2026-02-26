@@ -5,7 +5,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract ERC20MockRevertable is ERC20 {
     
-    bool sohuldTransferFromReturnFalse;
+    bool public sohuldTransferFromReturnFalse;
 
     constructor() ERC20("ERC20Mock", "E20M") {}
 
@@ -26,9 +26,6 @@ contract ERC20MockRevertable is ERC20 {
     }
     
     function transferFrom(address from, address to, uint256 value) public override returns (bool) {
-        if (sohuldTransferFromReturnFalse) {
-            return false;
-        }
-        return super.transferFrom(from, to, value);
+        return false;
     }
 }
