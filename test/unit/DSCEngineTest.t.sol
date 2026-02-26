@@ -164,7 +164,7 @@ contract DSCEngineTest is Test {
         revertableWeth = new ERC20MockRevertable();
         (_collaterals[0], _collaterals[1]) = (address(revertableWeth), wbtc);
         (_priceFeeds[0], _priceFeeds[1]) = ((wethUsdPriceFeed), wbtcUsdPriceFeed);
-        
+
         dsce = new DSCEngine(_collaterals, _priceFeeds, address(dscToken));
 
         ERC20MockRevertable(revertableWeth).mint(USER, AMOUNT_COLLATERAL);
@@ -222,7 +222,7 @@ contract DSCEngineTest is Test {
     function testRevertIfMintingDscBreaksHealthFactor() public userDeposited10Weth {
         uint256 dscAmountToMint = 50_000e18; // 50,000 DSC (= $50,000) > 10 ETH (= $30,000)
         uint256 healthFactorBeforeMint = dscEngine.getHealthFactor(USER);
-        
+
         uint256 collateralValueInUsd = (dscEngine.getUsdValue(weth, AMOUNT_COLLATERAL)) * PRECISION;
         uint256 collateralAdjustedThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
         uint256 healthFactorAfterMint = collateralAdjustedThreshold / dscAmountToMint;
@@ -230,13 +230,15 @@ contract DSCEngineTest is Test {
         assertGt(healthFactorBeforeMint, healthFactorAfterMint);
 
         vm.prank(USER);
-        vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__HealthFactorIsBroken.selector, healthFactorAfterMint));
+        vm.expectRevert(
+            abi.encodeWithSelector(DSCEngine.DSCEngine__HealthFactorIsBroken.selector, healthFactorAfterMint)
+        );
         dscEngine.mintDsc(dscAmountToMint);
     }
 
     function testRevertIfMintingZeroAmountOfDsc() public {
         uint256 dscAmountToMint = 0;
-        
+
         vm.prank(USER);
         vm.expectRevert(DSCEngine.DSCEngine__NeedsMoreThanZero.selector);
         dscEngine.mintDsc(0);
@@ -270,9 +272,15 @@ contract DSCEngineTest is Test {
 
     function testMintDsc() public userDeposited10Weth userMint100DscToken {
         uint256 expectedDscMinted = AMOUNT_DSC;
-        (uint256 actualDscMinted,) = dscEngine.getAccountInformation(USER);
+        uint256 collateralValueInUsd = dscEngine.getAccountCollateralValue(USER) * PRECISION;
+        uint256 expectedHealthFactor =
+            ((collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION) / AMOUNT_DSC;
+
+        uint256 actualDscMinted = dscEngine.getDscMinted(USER);
+        uint256 actualHealthFactor = dscEngine.getHealthFactor(USER);
 
         assertEq(expectedDscMinted, actualDscMinted);
+        assertEq(expectedHealthFactor, actualHealthFactor);
     }
 
     ///////////////////////////////////////
