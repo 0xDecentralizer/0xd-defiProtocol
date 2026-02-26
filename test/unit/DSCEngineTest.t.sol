@@ -168,11 +168,14 @@ contract DSCEngineTest is Test {
         dsce = new DSCEngine(_collaterals, _priceFeeds, address(dscToken));
 
         ERC20MockRevertable(revertableWeth).mint(USER, AMOUNT_COLLATERAL);
-        ERC20MockRevertable(revertableWeth).setTransferFromRetrunFalse;
+        ERC20MockRevertable(revertableWeth).setShouldRevertTrue();
+
         vm.startPrank(USER);
         ERC20MockRevertable(revertableWeth).approve(address(dsce), AMOUNT_COLLATERAL);
         vm.expectRevert(DSCEngine.DSCEngine__TransferFailed.selector);
         dsce.depositCollateral(address(revertableWeth), AMOUNT_COLLATERAL);
+
+        ERC20MockRevertable(revertableWeth).setShouldRevertFalse();
     }
 
     function testDepositCollateralsAndMintDscAtOnce() public {
@@ -229,6 +232,40 @@ contract DSCEngineTest is Test {
         vm.prank(USER);
         vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__HealthFactorIsBroken.selector, healthFactorAfterMint));
         dscEngine.mintDsc(dscAmountToMint);
+    }
+
+    function testRevertIfMintingZeroAmountOfDsc() public {
+        uint256 dscAmountToMint = 0;
+        
+        vm.prank(USER);
+        vm.expectRevert(DSCEngine.DSCEngine__NeedsMoreThanZero.selector);
+        dscEngine.mintDsc(0);
+    }
+
+    function testRevertIfMintingFails() public {
+        ERC20MockRevertable revertableDsc = new ERC20MockRevertable();
+        DSCEngine dsce;
+        address[] memory _collaterals = new address[](2);
+        address[] memory _priceFeeds = new address[](2);
+
+        (_collaterals[0], _collaterals[1]) = (weth, wbtc);
+        (_priceFeeds[0], _priceFeeds[1]) = (wethUsdPriceFeed, wbtcUsdPriceFeed);
+        dsce = new DSCEngine(_collaterals, _priceFeeds, address(revertableDsc));
+
+        // Deposit collateral before minting DSC
+        ERC20Mock(weth).mint(USER, AMOUNT_COLLATERAL);
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
+        dsce.depositCollateral(weth, AMOUNT_COLLATERAL);
+        vm.stopPrank();
+
+        ERC20MockRevertable(revertableDsc).setShouldRevertTrue();
+
+        vm.prank(USER);
+        vm.expectRevert(DSCEngine.DSCEngine__MintFalied.selector);
+        dsce.mintDsc(AMOUNT_DSC);
+
+        ERC20MockRevertable(revertableDsc).setShouldRevertTrue();
     }
 
     function testMintDsc() public userDeposited10Weth userMint100DscToken {
