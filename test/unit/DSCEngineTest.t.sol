@@ -280,6 +280,19 @@ contract DSCEngineTest is Test {
         dscEngine.redeemCollateral(weth, 0);
     }
 
+    function test_RedeemCollateral_RevertsOnInvalidCollateral() public {
+        address invalidCollatreral = makeAddr('haha');
+        vm.prank(USER);
+        vm.expectRevert(DSCEngine.DSCEngine__CollateralNotValid.selector);
+        dscEngine.redeemCollateral(invalidCollatreral, 5);
+    }
+
+    function test_RedeemCollateral_RevertsOnZeroBalanceToRedeem() public {
+        vm.prank(USER);
+        vm.expectRevert(DSCEngine.DSCEngine__ThereIsNoCollateralToRedeem.selector);
+        dscEngine.redeemCollateral(weth, 10);
+    }
+
     // ----------- Liquidate -----------
     function test_Liquidate_RevertsWhenTargetCollateralDoesNotExist() public userDeposited10Weth {
         vm.prank(USER);
