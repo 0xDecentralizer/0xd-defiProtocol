@@ -293,6 +293,28 @@ contract DSCEngineTest is Test {
         dscEngine.redeemCollateral(weth, 10);
     }
 
+    function test_RedeemCollateral_RedeemCollaterallAndEmitsEvent() public userDeposited10Weth {
+        uint256 amountToRedeem = 5e18;
+        uint256 usersCollateralValueBeforeRedeem = dscEngine.getAccountCollateralValue(USER);
+        uint256 enginesCollateralAmountBeforeRedeem = ERC20Mock(weth).balanceOf(address(dscEngine));
+        uint256 expectedUsersCollateralAfterRedeem = 5e18;
+
+        vm.prank(USER);
+        vm.expectEmit(true, true, true, true);
+        emit DSCEngine.CollateralRedeemed(USER, USER, weth, amountToRedeem);
+        dscEngine.redeemCollateral(weth, amountToRedeem);
+
+        uint256 usersCollateralValueAfterRedeem = dscEngine.getAccountCollateralValue(USER);
+        uint256 usersRedeemedCollateralValue = dscEngine.getUsdValue(weth, amountToRedeem);
+        assertEq(usersCollateralValueBeforeRedeem, usersCollateralValueAfterRedeem + usersRedeemedCollateralValue);
+
+        uint256 enginesCollateralAmountAfterRedeem = ERC20Mock(weth).balanceOf(address(dscEngine));
+        assertEq(enginesCollateralAmountBeforeRedeem, enginesCollateralAmountAfterRedeem + amountToRedeem);
+        
+        uint256 actualUsersCollateralAfterRedeem = dscEngine.getCollateralDeposited(USER, weth);
+        assertEq(expectedUsersCollateralAfterRedeem, actualUsersCollateralAfterRedeem);
+    }
+
     // ----------- Liquidate -----------
     function test_Liquidate_RevertsWhenTargetCollateralDoesNotExist() public userDeposited10Weth {
         vm.prank(USER);
