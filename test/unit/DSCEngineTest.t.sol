@@ -273,6 +273,13 @@ contract DSCEngineTest is Test {
         engine.burnDsc(amountDscToBurn);
     }
 
+    // ----------- Redeem Collateral -----------
+    function test_RedeemCollateral_RevertsOnZeroAmount() public {
+        vm.prank(USER);
+        vm.expectRevert(DSCEngine.DSCEngine__NeedsMoreThanZero.selector);
+        dscEngine.redeemCollateral(weth, 0);
+    }
+
     // ----------- Liquidate -----------
     function test_Liquidate_RevertsWhenTargetCollateralDoesNotExist() public userDeposited10Weth {
         vm.prank(USER);
