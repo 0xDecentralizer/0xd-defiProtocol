@@ -426,8 +426,7 @@ contract DSCEngine is ReentrancyGuard {
      * @return USD value in 18-decimal precision.
      * @dev Uses configured Chainlink price feed and assumes 8-decimal feed answer.
      */
-    function getUsdValue(address token, uint256 amount) public view returns (uint256) {
-        if (amount == 0) return 0;
+    function getUsdValue(address token, uint256 amount) public view needsMoreThanZero(amount) returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(priceFeeds[token]);
         (, int256 price,,,) = priceFeed.latestRoundData();
         return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
