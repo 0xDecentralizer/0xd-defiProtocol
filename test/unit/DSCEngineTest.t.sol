@@ -352,6 +352,15 @@ contract DSCEngineTest is Test {
         dscEngine.liquidate(invalidCollateral, i_user, 1);
     }
 
+    function test_Liquidate_RevertsWhenHealthFactorIsSafe() public givenUserDepositedWeth givenUserMintedDsc {
+        uint256 debtToCover = 1 ether;
+        uint256 healthFactor = dscEngine.getHealthFactor(i_user);
+
+        vm.prank(i_liquidator);
+        vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__HealthFactorIsSafe.selector, healthFactor));
+        dscEngine.liquidate(weth, i_user, debtToCover);
+    }
+
     function test_Liquidate_RevertsWhenTargetCollateralDoesNotExist() public givenUserDepositedWeth {
         vm.prank(i_user);
         dscEngine.mintDsc(15_000e18);
