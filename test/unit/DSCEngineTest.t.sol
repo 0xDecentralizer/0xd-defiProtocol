@@ -296,6 +296,16 @@ contract DSCEngineTest is Test {
         dscEngine.redeemCollateral(weth, 10);
     }
 
+    function test_RedeemCollateral_RevertsWhenUsersHealthFactorBreakes() public givenUserDepositedWeth givenUserMintedDsc {
+        uint256 amountToRedeem = 999e16;
+        uint256 userCollateralValueAfterRedeem = dscEngine.getUsdValue(address(weth), 1e16) * PRECISION;
+        uint256 healthFactorAfterRedeem = ((userCollateralValueAfterRedeem * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION) / DSC_AMOUNT;
+
+        vm.prank(i_user);
+        vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__HealthFactorIsBroken.selector, healthFactorAfterRedeem));
+        dscEngine.redeemCollateral(weth, amountToRedeem);
+    }
+
     function test_RedeemCollateral_RedeemsCollateralAndEmitsCollateralRedeemed() public givenUserDepositedWeth {
         uint256 amountToRedeem = 5e18;
         uint256 userCollateralValueBeforeRedeem = dscEngine.getAccountCollateralValue(i_user);
