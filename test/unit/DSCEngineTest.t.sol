@@ -361,6 +361,17 @@ contract DSCEngineTest is Test {
         dscEngine.liquidate(weth, i_user, debtToCover);
     }
 
+    function test_Liquidate_RevertsWhenDebtExeedUserDebt() public givenUserDepositedWeth givenUserMintedDsc {
+        uint256 debtToCover = 101 ether;
+        
+        MockV3Aggregator wethPriceFeed = MockV3Aggregator(wethUsdPriceFeed);
+        wethPriceFeed.updateAnswer(10e8); // Down the price to $10 per WETH
+
+        vm.prank(i_liquidator);
+        vm.expectRevert(DSCEngine.DSCEngine__DebtExeedsUserDebt.selector);
+        dscEngine.liquidate(weth, i_user, debtToCover);
+    }
+
     function test_Liquidate_RevertsWhenTargetCollateralDoesNotExist() public givenUserDepositedWeth {
         vm.prank(i_user);
         dscEngine.mintDsc(15_000e18);
