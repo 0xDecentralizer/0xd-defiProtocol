@@ -344,6 +344,14 @@ contract DSCEngineTest is Test {
         dscEngine.liquidate(weth, i_user, 0);
     }
 
+    function test_Liquidate_RevertsOnInvalidCollateral() public {
+        address invalidCollateral = address(123);
+
+        vm.prank(i_liquidator);
+        vm.expectRevert(DSCEngine.DSCEngine__CollateralNotValid.selector);
+        dscEngine.liquidate(invalidCollateral, i_user, 1);
+    }
+
     function test_Liquidate_RevertsWhenTargetCollateralDoesNotExist() public givenUserDepositedWeth {
         vm.prank(i_user);
         dscEngine.mintDsc(15_000e18);
