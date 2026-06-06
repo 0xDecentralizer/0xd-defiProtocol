@@ -19,6 +19,7 @@ contract DSCEngineTest is Test {
     uint256 private constant COLLATERAL_AMOUNT = 10 ether;
     uint256 private constant DSC_AMOUNT = 100 ether;
     address private immutable i_user = makeAddr("user 1");
+    address private immutable i_liquidator = makeAddr("liquidator 1");
 
     DeployDSC private deployer;
     DSCEngine private dscEngine;
@@ -337,14 +338,18 @@ contract DSCEngineTest is Test {
     /*//////////////////////////////////////////////////////////////
                                LIQUIDATE
     //////////////////////////////////////////////////////////////*/
-    function test_Liquidate_RevertsWhenTargetCollateralDoesNotExist() public givenUserDepositedWeth {
-        address liquidator = address(0x1);
+    function test_Liquidate_RevertsOnZeroAmount() public {
+        vm.prank(i_liquidator);
+        vm.expectRevert(DSCEngine.DSCEngine__NeedsMoreThanZero.selector);
+        dscEngine.liquidate(weth, i_user, 0);
+    }
 
+    function test_Liquidate_RevertsWhenTargetCollateralDoesNotExist() public givenUserDepositedWeth {
         vm.prank(i_user);
         dscEngine.mintDsc(15_000e18);
 
-        ERC20Mock(weth).mint(liquidator, COLLATERAL_AMOUNT);
-        vm.startPrank(liquidator);
+        ERC20Mock(weth).mint(i_liquidator, COLLATERAL_AMOUNT);
+        vm.startPrank(i_liquidator);
         ERC20Mock(weth).approve(address(dscEngine), COLLATERAL_AMOUNT);
         dscEngine.depositCollateral(weth, COLLATERAL_AMOUNT);
         dscEngine.mintDsc(10_000e18);
@@ -353,7 +358,7 @@ contract DSCEngineTest is Test {
         MockV3Aggregator wethPriceFeed = MockV3Aggregator(wethUsdPriceFeed);
         wethPriceFeed.updateAnswer(2500e8);
 
-        vm.startPrank(liquidator);
+        vm.startPrank(i_liquidator);
         ERC20Mock(address(dscToken)).approve(address(dscEngine), 1000e18);
         vm.expectRevert(DSCEngine.DSCEngine__UserDontHaveThisCollateral.selector);
 
