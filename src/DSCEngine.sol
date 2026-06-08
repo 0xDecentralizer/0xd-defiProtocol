@@ -260,7 +260,8 @@ contract DSCEngine is ReentrancyGuard {
             revert DSCEngine__InsufficientCollateralForLiquidation();
         }
 
-        _redeemCollateral(user, msg.sender, collateral, totalCollateralToTransfer);
+        collateralDeposited[user][collateral] -= totalCollateralToTransfer;
+        collateralDeposited[msg.sender][collateral] += totalCollateralToTransfer;
         _burnDsc(user, msg.sender, debtToCover);
         emit CollateralLiquidated(msg.sender, user, collateral, debtToCover, totalCollateralToTransfer);
 
