@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {Test} from "forge-std/Test.sol";
+import {console} from "forge-std/Script.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {DeployDSC} from "../../script/DeployDSC.s.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
@@ -392,6 +393,59 @@ contract DSCEngineTest is Test {
 
         dscEngine.liquidate(wbtc, i_user, 1000e18);
         vm.stopPrank();
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    function test_Liquidate_LiquidAUserAndEmitCollateralLiquidated() public givenUserDepositedWeth givenUserMintedDsc {
+        // prepare liquidator for liquidating a user
+        vm.startPrank(i_liquidator);
+        ERC20Mock(weth).mint(i_liquidator, 100 ether);
+        ERC20Mock(weth).approve(address(dscEngine), 100 ether);
+        ERC20Mock(address(dscToken)).approve(address(dscEngine), 100 ether);
+        dscEngine.depositCollateralAndMintDsc(weth, 100 ether, 100 ether);
+        vm.stopPrank();
+
+        // Make `i_user` liquidatable by changing price of weth
+        MockV3Aggregator priceFeed = MockV3Aggregator(wethUsdPriceFeed);
+        priceFeed.updateAnswer(15e8);
+
+        console.log("User HF before liquidation      : ", dscEngine.getHealthFactor(i_user));
+        console.log("Liquidator HF before liquidation: ", dscEngine.getHealthFactor(i_liquidator));
+        console.log("Liquidator weth balance: ", dscEngine.getCollateralDeposited(i_liquidator, weth));
+        
+        uint256 debtToCover = 90 ether; // Equal to 80 DSC stable coin ($80)        
+        vm.prank(i_liquidator);
+        dscEngine.liquidate(weth, i_user, debtToCover);
+
+        console.log("User HF afeter liquidation      : ", dscEngine.getHealthFactor(i_user));
+        console.log("Liquidator HF after liquidation : ", dscEngine.getHealthFactor(i_liquidator));
+        console.log("Liquidator weth balance: ", dscEngine.getCollateralDeposited(i_liquidator, weth));
     }
 
     /*//////////////////////////////////////////////////////////////
