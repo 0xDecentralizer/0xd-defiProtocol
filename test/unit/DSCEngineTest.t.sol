@@ -395,33 +395,6 @@ contract DSCEngineTest is Test {
         vm.stopPrank();
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     function test_Liquidate_LiquidAUserAndEmitCollateralLiquidated() public givenUserDepositedWeth givenUserMintedDsc {
         // prepare liquidator for liquidating a user
         vm.startPrank(i_liquidator);

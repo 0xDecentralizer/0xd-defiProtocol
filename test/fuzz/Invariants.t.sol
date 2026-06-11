@@ -21,6 +21,9 @@ contract InvariantTest is StdInvariant, Test {
     address wbtcUsdPriceFeed;
     Handler handler;
 
+    uint256 private constant LIQUIDATION_THRESHOLD = 50;
+    uint256 private constant LIQUIDATION_PRECISION = 100;
+
     function setUp() external {
         deployer = new DeployDSC();
         (dsc, dsce, config) = deployer.run();
@@ -32,18 +35,20 @@ contract InvariantTest is StdInvariant, Test {
     function invariant_testCollateralValueShouldBeGreaterThanTotalDscSupply() public {
         uint256 totalWeth = ERC20Mock(weth).balanceOf(address(dsce));
         uint256 totalWbtc = ERC20Mock(wbtc).balanceOf(address(dsce));
-        console.log("weth: ", totalWeth);
-        console.log("wbtc: ", totalWbtc);
-        uint256 totalDscSupply = dsc.totalSupply();
-        console.log("totalDsc: ", totalDscSupply);
 
         uint256 wethUsdValue = dsce.getUsdValue(weth, totalWeth);
         uint256 wbtcUsdValue = dsce.getUsdValue(wbtc, totalWbtc);
-        uint256 totalCollateralValue = wethUsdValue + wbtcUsdValue;
 
+        uint256 totalCollateralValue = wethUsdValue + wbtcUsdValue;
+        uint256 totalDscSupply = dsc.totalSupply();
+
+        console.log("weth: ", totalWeth);
+        console.log("wbtc: ", totalWbtc);
+        console.log("totalDscSupply: ", totalDscSupply);
         console.log("totalCollateralValue: ", totalCollateralValue);
 
-
-        assertGe(totalCollateralValue, totalDscSupply);
+        assertGe((totalCollateralValue * LIQUIDATION_PRECISION) / LIQUIDATION_PRECISION , totalDscSupply);
     }
+
+    // function invariant_testHealthFactor
 }
