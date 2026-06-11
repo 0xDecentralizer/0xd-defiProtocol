@@ -20,6 +20,7 @@ contract Handler is StdInvariant, Test {
 
     uint256 constant DEPOSIT_AMOUNT = 100_000 ether;
     uint256 constant REDEEM_AMOUNT = 10_000 ether;
+    uint256 constant MINT_AMOUNT = 1_000_000 ether;
 
     constructor(DSCEngine _dsce, DecentralizedStableCoin _dsc, HelperConfig _config) {
         dsce = _dsce;
@@ -30,15 +31,19 @@ contract Handler is StdInvariant, Test {
 
     function depositCollateral(uint256 collateralSeed, uint256 amountToDeposit) public {
         address collateral = _getCollateralBySeed(collateralSeed);
-        amountToDeposit = bound(amountToDeposit, 1, DEPOSIT_AMOUNT);
         _depositCollateral(collateral, amountToDeposit);
     }
 
     function redeemCollateral(uint256 collateralSeed, uint256 amountToRedeem) public {
         address collateral = _getCollateralBySeed(collateralSeed);
-        amountToRedeem = bound(amountToRedeem, 1, REDEEM_AMOUNT);
         _depositCollateral(collateral, amountToRedeem);
         _redeemCollateral(collateral, amountToRedeem);
+    }
+
+    function mintDsc(uint256 amountToMint, uint256 collateralSeed) public {
+        address collateral = _getCollateralBySeed(collateralSeed);
+        _depositCollateral(collateral, amountToMint);
+        _mintDsc(amountToMint);
     }
 
     function _getCollateralBySeed(uint256 seed) private view returns (address collateral) {
@@ -46,12 +51,19 @@ contract Handler is StdInvariant, Test {
     }
 
     function _depositCollateral(address collateral, uint256 amountToDeposit) private {
+        amountToDeposit = bound(amountToDeposit, 1, DEPOSIT_AMOUNT);
         ERC20Mock(collateral).mint(address(this), amountToDeposit);
         ERC20Mock(collateral).approve(address(dsce), amountToDeposit);
         dsce.depositCollateral(collateral, amountToDeposit);
     }
 
     function _redeemCollateral(address collateral, uint256 amountToRedeem) private {
+        amountToRedeem = bound(amountToRedeem, 1, REDEEM_AMOUNT);
         dsce.redeemCollateral(collateral, amountToRedeem);
+    }
+
+    function _mintDsc(uint256 amountToMint) private {
+        amountToMint = bound(amountToMint, 1, MINT_AMOUNT);
+        dsce.mintDsc(amountToMint);
     }
 }

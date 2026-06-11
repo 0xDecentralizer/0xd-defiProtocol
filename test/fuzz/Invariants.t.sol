@@ -42,10 +42,11 @@ contract InvariantTest is StdInvariant, Test {
         uint256 totalCollateralValue = wethUsdValue + wbtcUsdValue;
         uint256 totalDscSupply = dsc.totalSupply();
 
-        console.log("weth: ", totalWeth);
-        console.log("wbtc: ", totalWbtc);
-        console.log("totalDscSupply: ", totalDscSupply);
-        console.log("totalCollateralValue: ", totalCollateralValue);
+        console.log("weth: ", totalWeth / 1e18);
+        console.log("wbtc: ", totalWbtc / 1e18);
+        console.log("totalDscSupply: ", totalDscSupply / 1e18);
+        console.log("totalCollateralValue: ", totalCollateralValue / 1e18);
+        console.log("Adjusted: ", ((totalCollateralValue * LIQUIDATION_PRECISION) / LIQUIDATION_PRECISION) / 1e18);
 
         assertGe((totalCollateralValue * LIQUIDATION_PRECISION) / LIQUIDATION_PRECISION , totalDscSupply);
     }
