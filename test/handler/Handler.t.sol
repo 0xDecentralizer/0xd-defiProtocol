@@ -18,6 +18,9 @@ contract Handler is StdInvariant, Test {
     address weth;
     address wbtc;
 
+    uint256 constant DEPOSIT_AMOUNT = 100_000 ether;
+    uint256 constant REDEEM_AMOUNT = 10_000 ether;
+
     constructor(DSCEngine _dsce, DecentralizedStableCoin _dsc, HelperConfig _config) {
         dsce = _dsce;
         dsc = _dsc;
@@ -25,15 +28,30 @@ contract Handler is StdInvariant, Test {
         (wethUsdPriceFeed, wbtcUsdPriceFeed ,weth, wbtc,) = config.activeNetworkConfig();
     } 
 
-    function depositCollateral(uint256 collateralSeed, uint256 amount) public {
+    function depositCollateral(uint256 collateralSeed, uint256 amountToDeposit) public {
         address collateral = _getCollateralBySeed(collateralSeed);
-        amount = bound(amount, 1, 100 ether);
-        ERC20Mock(collateral).mint(address(this), amount);
-        ERC20Mock(collateral).approve(address(dsce), amount);
-        dsce.depositCollateral(collateral, amount);
+        amountToDeposit = bound(amountToDeposit, 1, DEPOSIT_AMOUNT);
+        _depositCollateral(collateral, amountToDeposit);
+    }
+
+    function redeemCollateral(uint256 collateralSeed, uint256 amountToRedeem) public {
+        address collateral = _getCollateralBySeed(collateralSeed);
+        amountToRedeem = bound(amountToRedeem, 1, REDEEM_AMOUNT);
+        _depositCollateral(collateral, amountToRedeem);
+        _redeemCollateral(collateral, amountToRedeem);
     }
 
     function _getCollateralBySeed(uint256 seed) private view returns (address collateral) {
         collateral = seed % 2 == 0 ? weth : wbtc;
+    }
+
+    function _depositCollateral(address collateral, uint256 amountToDeposit) private {
+        ERC20Mock(collateral).mint(address(this), amountToDeposit);
+        ERC20Mock(collateral).approve(address(dsce), amountToDeposit);
+        dsce.depositCollateral(collateral, amountToDeposit);
+    }
+
+    function _redeemCollateral(address collateral, uint256 amountToRedeem) private {
+        dsce.redeemCollateral(collateral, amountToRedeem);
     }
 }
