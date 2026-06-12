@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
 pragma solidity ^0.8.30;
 
-import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {DSCEngine} from "../../src/DSCEngine.sol";
 import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
@@ -9,7 +8,7 @@ import {DeployDSC} from "../../script/DeployDSC.s.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
-contract Handler is StdInvariant, Test {
+contract Handler is Test {
     DSCEngine dsce;
     DecentralizedStableCoin dsc;
     HelperConfig config;
@@ -18,9 +17,9 @@ contract Handler is StdInvariant, Test {
     address weth;
     address wbtc;
 
-    uint256 constant DEPOSIT_AMOUNT = 100_000 ether;
-    uint256 constant REDEEM_AMOUNT = 10_000 ether;
-    uint256 constant MINT_AMOUNT = 1_000_000 ether;
+    uint256 constant MAX_DEPOSIT_AMOUNT = 100_000 ether;
+    uint256 constant MAX_REDEEM_AMOUNT = 10_000 ether;
+    uint256 constant MAX_MINT_AMOUNT = 1_000_000 ether;
 
     constructor(DSCEngine _dsce, DecentralizedStableCoin _dsc, HelperConfig _config) {
         dsce = _dsce;
@@ -31,17 +30,21 @@ contract Handler is StdInvariant, Test {
 
     function depositCollateral(uint256 collateralSeed, uint256 amountToDeposit) public {
         address collateral = _getCollateralBySeed(collateralSeed);
+        amountToDeposit = bound(amountToDeposit, 1, MAX_DEPOSIT_AMOUNT);
         _depositCollateral(collateral, amountToDeposit);
     }
 
-    function redeemCollateral(uint256 collateralSeed, uint256 amountToRedeem) public {
+    function redeemCollateral(uint256 collateralSeed, uint256 amountToRedeem, uint256 amountToDeposit) public {
         address collateral = _getCollateralBySeed(collateralSeed);
-        _depositCollateral(collateral, amountToRedeem);
+        amountToRedeem = bound(amountToRedeem, 1, MAX_REDEEM_AMOUNT);
+        amountToDeposit = bound(amountToDeposit, amountToRedeem, MAX_DEPOSIT_AMOUNT);
+        _depositCollateral(collateral, amountToDeposit);
         _redeemCollateral(collateral, amountToRedeem);
     }
 
-    function mintDsc(uint256 amountToMint, uint256 collateralSeed) public {
+    function mintDsc(uint256 collateralSeed, uint256 amountToMint, uint256 amountToDeposit) public {
         address collateral = _getCollateralBySeed(collateralSeed);
+        amountToMint = bound(amountToMint, 1, MAX_MINT_AMOUNT);
         _depositCollateral(collateral, amountToMint);
         _mintDsc(amountToMint);
     }
@@ -51,19 +54,16 @@ contract Handler is StdInvariant, Test {
     }
 
     function _depositCollateral(address collateral, uint256 amountToDeposit) private {
-        amountToDeposit = bound(amountToDeposit, 1, DEPOSIT_AMOUNT);
         ERC20Mock(collateral).mint(address(this), amountToDeposit);
         ERC20Mock(collateral).approve(address(dsce), amountToDeposit);
         dsce.depositCollateral(collateral, amountToDeposit);
     }
 
     function _redeemCollateral(address collateral, uint256 amountToRedeem) private {
-        amountToRedeem = bound(amountToRedeem, 1, REDEEM_AMOUNT);
         dsce.redeemCollateral(collateral, amountToRedeem);
     }
 
     function _mintDsc(uint256 amountToMint) private {
-        amountToMint = bound(amountToMint, 1, MINT_AMOUNT);
         dsce.mintDsc(amountToMint);
     }
 }

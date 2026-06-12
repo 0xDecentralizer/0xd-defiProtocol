@@ -23,6 +23,7 @@ contract InvariantTest is StdInvariant, Test {
 
     uint256 private constant LIQUIDATION_THRESHOLD = 50;
     uint256 private constant LIQUIDATION_PRECISION = 100;
+    uint256 private constant PRECISION = 100;
 
     function setUp() external {
         deployer = new DeployDSC();
@@ -41,14 +42,15 @@ contract InvariantTest is StdInvariant, Test {
 
         uint256 totalCollateralValue = wethUsdValue + wbtcUsdValue;
         uint256 totalDscSupply = dsc.totalSupply();
+        uint256 maxProtocolPain = ((totalCollateralValue * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION);
 
-        console.log("weth: ", totalWeth / 1e18);
-        console.log("wbtc: ", totalWbtc / 1e18);
-        console.log("totalDscSupply: ", totalDscSupply / 1e18);
-        console.log("totalCollateralValue: ", totalCollateralValue / 1e18);
-        console.log("Adjusted: ", ((totalCollateralValue * LIQUIDATION_PRECISION) / LIQUIDATION_PRECISION) / 1e18);
+        console.log("weth: ", totalWeth / PRECISION);
+        console.log("wbtc: ", totalWbtc / PRECISION);
+        console.log("totalDscSupply: ", totalDscSupply / PRECISION);
+        console.log("totalCollateralValue: ", totalCollateralValue / PRECISION);
+        console.log("Adjusted: ", maxProtocolPain / PRECISION);
 
-        assertGe((totalCollateralValue * LIQUIDATION_PRECISION) / LIQUIDATION_PRECISION , totalDscSupply);
+        assertGe(maxProtocolPain, totalDscSupply);
     }
 
     // function invariant_testHealthFactor
