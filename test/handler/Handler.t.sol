@@ -42,11 +42,20 @@ contract Handler is Test {
         _redeemCollateral(collateral, amountToRedeem);
     }
 
-    function mintDsc(uint256 collateralSeed, uint256 amountToMint, uint256 amountToDeposit) public {
+    function mintDsc(uint256 collateralSeed, uint256 amountToMint) public {
         address collateral = _getCollateralBySeed(collateralSeed);
         amountToMint = bound(amountToMint, 1, MAX_MINT_AMOUNT);
         _depositCollateral(collateral, amountToMint);
         _mintDsc(amountToMint);
+    }
+    
+    function burnDsc(uint256 collateralSeed, uint256 amountToMint, uint256 amountToBurn) public {
+        address collateral = _getCollateralBySeed(collateralSeed);
+        amountToMint = bound(amountToMint, 1, MAX_MINT_AMOUNT);
+        amountToBurn = bound(amountToBurn, 1, amountToMint);
+        _depositCollateral(collateral, amountToMint);
+        _mintDsc(amountToMint);
+        _burnDsc(amountToBurn);
     }
 
     function _getCollateralBySeed(uint256 seed) private view returns (address collateral) {
@@ -65,5 +74,10 @@ contract Handler is Test {
 
     function _mintDsc(uint256 amountToMint) private {
         dsce.mintDsc(amountToMint);
+    }
+
+    function _burnDsc(uint256 amountToBurn) private {
+        ERC20Mock(address(dsc)).approve(address(dsce), amountToBurn);
+        dsce.burnDsc(amountToBurn);
     }
 }
