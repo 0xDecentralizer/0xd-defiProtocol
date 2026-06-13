@@ -16,6 +16,8 @@ contract Handler is Test {
     address wbtcUsdPriceFeed;
     address weth;
     address wbtc;
+    address[] public actors;
+    address internal currentActor;
 
     uint256 constant MAX_DEPOSIT_AMOUNT = 100_000 ether;
     uint256 constant MAX_REDEEM_AMOUNT = 10_000 ether;
@@ -26,12 +28,23 @@ contract Handler is Test {
         dsc = _dsc;
         config = _config;
         (wethUsdPriceFeed, wbtcUsdPriceFeed ,weth, wbtc,) = config.activeNetworkConfig();
-    } 
 
-    function depositCollateral(uint256 collateralSeed, uint256 amountToDeposit) public {
+        for(uint256 i = 0; i < 100; i++) actors.push(makeAddr(string(abi.encodePacked("actor", i))));
+    }
+
+    modifier useActor(uint256 actorSeed) {
+        currentActor = actors[bound(actorSeed, 0, actors.length - 1)];
+        vm.startPrank(currentActor);
+        _;
+        vm.stopPrank();
+    }
+
+    function depositCollateral(uint256 actorSeed, uint256 collateralSeed, uint256 amountToDeposit) useActor(actorSeed) public {
         address collateral = _getCollateralBySeed(collateralSeed);
         amountToDeposit = bound(amountToDeposit, 1, MAX_DEPOSIT_AMOUNT);
-        _depositCollateral(collateral, amountToDeposit);
+        ERC20Mock(collateral).mint(currentActor, amountToDeposit);
+        ERC20Mock(collateral).approve(address(dsce), amountToDeposit);
+        dsce.depositCollateral(collateral, amountToDeposit);
     }
 
     function redeemCollateral(uint256 collateralSeed, uint256 amountToRedeem, uint256 amountToDeposit) public {
@@ -63,9 +76,6 @@ contract Handler is Test {
     }
 
     function _depositCollateral(address collateral, uint256 amountToDeposit) private {
-        ERC20Mock(collateral).mint(address(this), amountToDeposit);
-        ERC20Mock(collateral).approve(address(dsce), amountToDeposit);
-        dsce.depositCollateral(collateral, amountToDeposit);
     }
 
     function _redeemCollateral(address collateral, uint256 amountToRedeem) private {
