@@ -18,6 +18,7 @@ contract Handler is Test {
     address wbtc;
     address[] public actors;
     address[] public actorsWithCollateral;
+    address[] public actorsWithDsc;
     address internal currentActor;
     mapping(address => mapping(address => uint256)) public collateralDeposited;
     mapping(address => uint256) public dscMinted;
@@ -56,6 +57,14 @@ contract Handler is Test {
             actorsWithCollateral.push(actors[0]);
         }
         currentActor = actorsWithCollateral[bound(actorSeed, 0, actorsWithCollateral.length - 1)];
+        vm.startPrank(currentActor);
+        _;
+        vm.stopPrank();
+    }
+
+    modifier useActorWithDscMinted(uint256 actorSeed) {
+        vm.assume(actorsWithDsc.length != 0);
+        currentActor = actorsWithDsc[bound(actorSeed, 0, actorsWithDsc.length - 1)];
         vm.startPrank(currentActor);
         _;
         vm.stopPrank();
@@ -100,7 +109,19 @@ contract Handler is Test {
 
         amountToMint = bound(amountToMint, 1, uint256(maxMintAmount));
         dsce.mintDsc(amountToMint);
+        if (dscMinted[currentActor] == 0) {
+            actorsWithDsc.push(currentActor);
+        }
+        dscMinted[currentActor] += amountToMint;
         ghost_mintCalled++;
+    }
+
+    function burnDsc(uint256 actorSeed, uint256 amountToBurn) public useActorWithDscMinted(actorSeed) {
+        uint256 maxBurnAmount = dsce.getDscMinted(currentActor);
+        vm.assume(maxBurnAmount > 0);
+        amountToBurn = bound(amountToBurn, 1, maxBurnAmount);
+        ERC20Mock(address(dsc)).approve(address(dsce), amountToBurn);
+        dsce.burnDsc(amountToBurn);
     }
 
     function _getCollateralBySeed(uint256 seed) private view returns (address collateral) {
