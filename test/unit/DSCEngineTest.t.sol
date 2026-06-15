@@ -298,13 +298,20 @@ contract DSCEngineTest is Test {
         dscEngine.redeemCollateral(weth, 10);
     }
 
-    function test_RedeemCollateral_RevertsWhenUsersHealthFactorBreakes() public givenUserDepositedWeth givenUserMintedDsc {
+    function test_RedeemCollateral_RevertsWhenUsersHealthFactorBreakes()
+        public
+        givenUserDepositedWeth
+        givenUserMintedDsc
+    {
         uint256 amountToRedeem = 999e16;
         uint256 userCollateralValueAfterRedeem = dscEngine.getUsdValue(address(weth), 1e16) * PRECISION;
-        uint256 healthFactorAfterRedeem = ((userCollateralValueAfterRedeem * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION) / DSC_AMOUNT;
+        uint256 healthFactorAfterRedeem =
+            ((userCollateralValueAfterRedeem * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION) / DSC_AMOUNT;
 
         vm.prank(i_user);
-        vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__HealthFactorIsBroken.selector, healthFactorAfterRedeem));
+        vm.expectRevert(
+            abi.encodeWithSelector(DSCEngine.DSCEngine__HealthFactorIsBroken.selector, healthFactorAfterRedeem)
+        );
         dscEngine.redeemCollateral(weth, amountToRedeem);
     }
 
@@ -313,7 +320,6 @@ contract DSCEngineTest is Test {
         uint256 userCollateralValueBeforeRedeem = dscEngine.getAccountCollateralValue(i_user);
         uint256 engineCollateralAmountBeforeRedeem = ERC20Mock(weth).balanceOf(address(dscEngine));
         uint256 expectedUserCollateralAfterRedeem = 5e18;
-        
 
         vm.prank(i_user);
         vm.expectEmit(true, true, true, true);
@@ -364,7 +370,7 @@ contract DSCEngineTest is Test {
 
     function test_Liquidate_RevertsWhenDebtExeedUserDebt() public givenUserDepositedWeth givenUserMintedDsc {
         uint256 debtToCover = 101 ether;
-        
+
         MockV3Aggregator wethPriceFeed = MockV3Aggregator(wethUsdPriceFeed);
         wethPriceFeed.updateAnswer(10e8); // Down the price to $10 per WETH
 
@@ -411,8 +417,8 @@ contract DSCEngineTest is Test {
         console.log("User HF before liquidation      : ", dscEngine.getHealthFactor(i_user));
         console.log("Liquidator HF before liquidation: ", dscEngine.getHealthFactor(i_liquidator));
         console.log("Liquidator weth balance: ", dscEngine.getCollateralDeposited(i_liquidator, weth));
-        
-        uint256 debtToCover = 90 ether; // Equal to 80 DSC stable coin ($80)        
+
+        uint256 debtToCover = 90 ether; // Equal to 80 DSC stable coin ($80)
         vm.prank(i_liquidator);
         dscEngine.liquidate(weth, i_user, debtToCover);
 
