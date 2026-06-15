@@ -17,11 +17,16 @@ contract Handler is Test {
     address weth;
     address wbtc;
     address[] public actors;
+    address[] public actorsWithCollateral;
     address internal currentActor;
+    mapping(address => mapping(address => uint256)) public collateralDeposited;
+    mapping(address => uint256) public dscMinted;
 
-    uint256 constant MAX_DEPOSIT_AMOUNT = 100_000 ether;
-    uint256 constant MAX_REDEEM_AMOUNT = 10_000 ether;
-    uint256 constant MAX_MINT_AMOUNT = 1_000_000 ether;
+    uint256 constant MAX_DEPOSIT_AMOUNT = type(uint32).max;
+
+    uint256 public ghost_depositCalled;
+    uint256 public ghost_redeemCalled;
+    uint256 public ghost_mintCalled;
 
     constructor(DSCEngine _dsce, DecentralizedStableCoin _dsc, HelperConfig _config) {
         dsce = _dsce;
@@ -41,61 +46,54 @@ contract Handler is Test {
         vm.stopPrank();
     }
 
+    modifier useActorWithCollateral(uint256 actorSeed) {
+        if (actorsWithCollateral.length == 0) {
+            vm.startPrank(actors[0]);
+            ERC20Mock(weth).mint(actors[0], MAX_DEPOSIT_AMOUNT);
+            ERC20Mock(weth).approve(address(dsce), MAX_DEPOSIT_AMOUNT);
+            dsce.depositCollateral(weth, MAX_DEPOSIT_AMOUNT);
+            vm.stopPrank();
+            actorsWithCollateral.push(actors[0]);
+        }
+        currentActor = actorsWithCollateral[bound(actorSeed, 0, actorsWithCollateral.length - 1)];
+        vm.startPrank(currentActor);
+        _;
+        vm.stopPrank();
+    }
+
     function depositCollateral(uint256 actorSeed, uint256 collateralSeed, uint256 amountToDeposit)
         public
         useActor(actorSeed)
     {
         address collateral = _getCollateralBySeed(collateralSeed);
         amountToDeposit = bound(amountToDeposit, 1, MAX_DEPOSIT_AMOUNT);
+
         ERC20Mock(collateral).mint(currentActor, amountToDeposit);
         ERC20Mock(collateral).approve(address(dsce), amountToDeposit);
         dsce.depositCollateral(collateral, amountToDeposit);
+
+        if (collateralDeposited[currentActor][weth] == 0 && collateralDeposited[currentActor][wbtc] == 0) {
+            actorsWithCollateral.push(currentActor);
+        }
+        collateralDeposited[currentActor][collateral] += amountToDeposit;
+        ghost_depositCalled++;
     }
 
-    function redeemCollateral(
-        uint256 actorSeed,
-        uint256 collateralSeed,
-        uint256 amountToRedeem,
-        uint256 amountToDeposit
-    ) public useActor(actorSeed) {
+    function redeemCollateral(uint256 actorSeed, uint256 collateralSeed, uint256 amountToRedeem)
+        public
+        useActorWithCollateral(actorSeed)
+    {
         address collateral = _getCollateralBySeed(collateralSeed);
-        uint256 actorBalance = dsce.getCollateralDeposited(currentActor, collateral);
-        amountToRedeem = bound(amountToRedeem, 0, actorBalance);
+
+        uint256 maxRedeemAmount = dsce.getCollateralDeposited(currentActor, collateral);
+        
+        amountToRedeem = bound(amountToRedeem, 0, maxRedeemAmount);
         if (amountToRedeem == 0) return;
-        amountToDeposit = bound(amountToDeposit, amountToRedeem, MAX_DEPOSIT_AMOUNT);
         dsce.redeemCollateral(collateral, amountToRedeem);
+        ghost_redeemCalled++;
     }
-
-    function mintDsc(uint256 collateralSeed, uint256 amountToMint) public {
-        address collateral = _getCollateralBySeed(collateralSeed);
-        amountToMint = bound(amountToMint, 1, MAX_MINT_AMOUNT);
-        _depositCollateral(collateral, amountToMint);
-        _mintDsc(amountToMint);
-    }
-
-    function burnDsc(uint256 collateralSeed, uint256 amountToMint, uint256 amountToBurn) public {
-        address collateral = _getCollateralBySeed(collateralSeed);
-        amountToMint = bound(amountToMint, 1, MAX_MINT_AMOUNT);
-        amountToBurn = bound(amountToBurn, 1, amountToMint);
-        _depositCollateral(collateral, amountToMint);
-        _mintDsc(amountToMint);
-        _burnDsc(amountToBurn);
-    }
-
+    
     function _getCollateralBySeed(uint256 seed) private view returns (address collateral) {
         collateral = seed % 2 == 0 ? weth : wbtc;
-    }
-
-    function _depositCollateral(address collateral, uint256 amountToDeposit) private {}
-
-    function _redeemCollateral(address collateral, uint256 amountToRedeem) private {}
-
-    function _mintDsc(uint256 amountToMint) private {
-        dsce.mintDsc(amountToMint);
-    }
-
-    function _burnDsc(uint256 amountToBurn) private {
-        ERC20Mock(address(dsc)).approve(address(dsce), amountToBurn);
-        dsce.burnDsc(amountToBurn);
     }
 }

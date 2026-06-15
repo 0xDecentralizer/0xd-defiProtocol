@@ -28,7 +28,7 @@ contract InvariantTest is StdInvariant, Test {
     function setUp() external {
         deployer = new DeployDSC();
         (dsc, dsce, config) = deployer.run();
-        (wethUsdPriceFeed, wbtcUsdPriceFeed ,weth, wbtc,) = config.activeNetworkConfig();
+        (wethUsdPriceFeed, wbtcUsdPriceFeed, weth, wbtc,) = config.activeNetworkConfig();
         handler = new Handler(dsce, dsc, config);
         targetContract(address(handler));
     }
@@ -50,6 +50,8 @@ contract InvariantTest is StdInvariant, Test {
         console.log("totalCollateralValue: ", totalCollateralValue / PRECISION);
         console.log("Adjusted: ", maxProtocolPain / PRECISION);
 
+        console.log("deposit called: ", handler.ghost_depositCalled());
+        console.log("redeem called: ", handler.ghost_redeemCalled());
         assertGe(maxProtocolPain, totalDscSupply);
     }
 
