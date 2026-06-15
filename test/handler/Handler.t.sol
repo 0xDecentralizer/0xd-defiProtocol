@@ -85,15 +85,37 @@ contract Handler is Test {
     {
         address collateral = _getCollateralBySeed(collateralSeed);
 
-        uint256 maxRedeemAmount = dsce.getCollateralDeposited(currentActor, collateral);
+        uint256 maxRedeemAmount = _getSafeRedeemAmount(currentActor, collateral);
         
         amountToRedeem = bound(amountToRedeem, 0, maxRedeemAmount);
         if (amountToRedeem == 0) return;
         dsce.redeemCollateral(collateral, amountToRedeem);
         ghost_redeemCalled++;
     }
-    
+
+    function mintDsc(uint256 actorSeed, uint256 amountToMint) public useActorWithCollateral(actorSeed) {
+        (uint256 totalDscMinted, uint256 totalCollateralValue) = dsce.getAccountInformation(currentActor);
+        int256 maxMintAmount = (int256(totalCollateralValue) / 2) - int256(totalDscMinted);
+        vm.assume(maxMintAmount > 0);
+
+        amountToMint = bound(amountToMint, 1, uint256(maxMintAmount));
+        dsce.mintDsc(amountToMint);
+        ghost_mintCalled++;
+    }
+
     function _getCollateralBySeed(uint256 seed) private view returns (address collateral) {
         collateral = seed % 2 == 0 ? weth : wbtc;
+    }
+
+    function _getSafeRedeemAmount(address actor, address collateral) private returns (uint256) {
+        (uint256 totalDscMinted, uint256 totalCollateralValue) = dsce.getAccountInformation(currentActor);
+        uint256 maxValueToRedeem = (totalCollateralValue / 2) - totalDscMinted;
+
+        uint256 primaryAmount = dsce.getCollateralAmountFromUsdValue(collateral, maxValueToRedeem);
+        uint256 actorCollateralBalance = dsce.getCollateralDeposited(currentActor, collateral);
+        if (actorCollateralBalance >= primaryAmount) {
+            return primaryAmount;
+        }
+        return actorCollateralBalance;
     }
 }
