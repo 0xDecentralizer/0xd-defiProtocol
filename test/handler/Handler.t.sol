@@ -28,6 +28,7 @@ contract Handler is Test {
     uint256 public ghost_depositCalled;
     uint256 public ghost_redeemCalled;
     uint256 public ghost_mintCalled;
+    uint256 public ghost_burnCalled;
 
     constructor(DSCEngine _dsce, DecentralizedStableCoin _dsc, HelperConfig _config) {
         dsce = _dsce;
@@ -97,7 +98,7 @@ contract Handler is Test {
         uint256 maxRedeemAmount = _getSafeRedeemAmount(currentActor, collateral);
         
         amountToRedeem = bound(amountToRedeem, 0, maxRedeemAmount);
-        if (amountToRedeem == 0) return;
+        vm.assume(amountToRedeem != 0);
         dsce.redeemCollateral(collateral, amountToRedeem);
         ghost_redeemCalled++;
     }
@@ -122,6 +123,7 @@ contract Handler is Test {
         amountToBurn = bound(amountToBurn, 1, maxBurnAmount);
         ERC20Mock(address(dsc)).approve(address(dsce), amountToBurn);
         dsce.burnDsc(amountToBurn);
+        ghost_burnCalled++;
     }
 
     function _getCollateralBySeed(uint256 seed) private view returns (address collateral) {

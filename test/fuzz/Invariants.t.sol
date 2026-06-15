@@ -53,6 +53,7 @@ contract InvariantTest is StdInvariant, Test {
         console.log("deposit called: ", handler.ghost_depositCalled());
         console.log("redeem called: ", handler.ghost_redeemCalled());
         console.log("mint called: ", handler.ghost_mintCalled());
+        console.log("burn called: ", handler.ghost_burnCalled());
         assertGe(maxProtocolPain, totalDscSupply);
     }
 
