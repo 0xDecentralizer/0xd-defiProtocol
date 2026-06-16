@@ -1,34 +1,11 @@
 // SPDX-License-Identifier: MIT
-
-// This is considered an Exogenous, Decentralized, Anchored (pegged), Crypto Collateralized low volitility coin
-
-// Layout of Contract:
-// version
-// imports
-// interfaces, libraries, contracts
-// errors
-// Type declarations
-// State variables
-// Events
-// Modifiers
-// Functions
-
-// Layout of Functions:
-// constructor
-// receive function (if exists)
-// fallback function (if exists)
-// external
-// public
-// internal
-// private
-// view & pure functions
-
 pragma solidity ^0.8.30;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import {OracleLib} from "./libraries/OracleLib.sol";
 
 /**
  * @title DSCEngine
@@ -65,6 +42,11 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__UserDontHaveThisCollateral();
     error DSCEngine__HealthFactorNotImproved(uint256 userStartingHF, uint256 userEndingHF);
     error DSCEngine__ThereIsNoCollateralToRedeem();
+
+    /*//////////////////////////////////////////////////////////////
+                                TYPES
+    //////////////////////////////////////////////////////////////*/
+    using OracleLib for AggregatorV3Interface;
 
     /*//////////////////////////////////////////////////////////////
                            STATE VARIABLES
@@ -382,7 +364,7 @@ contract DSCEngine is ReentrancyGuard {
      */
     function getCollateralAmountFromUsdValue(address collateral, uint256 debtToCover) public view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(priceFeeds[collateral]);
-        (, int256 price,,,) = priceFeed.latestRoundData();
+        (, int256 price,,,) = priceFeed.staleCheckLatestRoundData();
         uint256 collateralAmount = (debtToCover * PRECISION) / (uint256(price) * ADDITIONAL_FEED_PRECISION);
 
         return collateralAmount;
@@ -430,7 +412,7 @@ contract DSCEngine is ReentrancyGuard {
     function getUsdValue(address token, uint256 amount) public view returns (uint256) {
         if (amount == 0) return 0;
         AggregatorV3Interface priceFeed = AggregatorV3Interface(priceFeeds[token]);
-        (, int256 price,,,) = priceFeed.latestRoundData();
+        (, int256 price,,,) = priceFeed.staleCheckLatestRoundData();
         return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
     }
 
